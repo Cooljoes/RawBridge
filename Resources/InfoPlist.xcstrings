@@ -1,0 +1,23 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSPhotoLibraryUsageDescription": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "允许 RawBridge 读取你授权的照片，以提取所选的 RAW 与 JPEG 原始文件。"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow RawBridge to read the photos you select and extract their original RAW and JPEG files."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
