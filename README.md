@@ -14,12 +14,14 @@
 
 A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If Photos retained both originals, RawBridge lets you save the NEF under its original filename, save the JPEG, or export the two files side by side. The original image bytes and embedded EXIF travel together.
 
-**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. All 11 tests passed on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
+[**Version history**](CHANGELOG.md)
+
+**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.2.0 (build 2) passed all 13 tests on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
 
 ## Extract your first NEF
 
-1. Open `RawBridge.xcodeproj` in Xcode, select the **RawBridge** scheme and run on an iPhone or iPad. Grant access to a photo that has a RAW original.
-2. Open a **JPEG + RAW** photo. Its resource list shows the original filenames and content types. For a Nikon pair, look for a `.NEF` entry alongside the `.JPG`.
+1. Open `RawBridge.xcodeproj` in Xcode, select the **RawBridge** scheme and run on an iPhone or iPad. Grant access to a photo that has a RAW original. Tap **Refresh library** to scan for the first time.
+2. Open a photo in the **JPEG + RAW** group. Its resource list shows the original filenames and content types. For a Nikon pair, look for a `.NEF` entry alongside the `.JPG`.
 3. Tap **Export → RAW → Save to Files** and choose a folder. Choose **RAW + JPEG** to save both originals. The system picker offers local storage, iCloud Drive and mounted drives according to what is available on the device.
 4. To check a real import, open **Settings → Verify integrity**. Select the original on the camera card, then the file in the destination folder. RawBridge compares their byte counts and SHA-256 digests. [On-device test procedure](docs/device-tests.md)
 
@@ -27,7 +29,7 @@ A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If 
 
 | Area | What you can do |
 | --- | --- |
-| Library | Filter for RAW, sort by capture date and narrow the grid by camera brand. **Read camera brands** fills in brands from available local metadata for formats such as DNG and JPEG. **Select all** selects the filtered results. |
+| Library | Open the last refreshed list, or use the refresh button or pull down to find new photos. Browse separate JPEG + RAW, RAW only, HEIF + RAW, Apple ProRAW, JPEG only, HEIF only and other groups. Filter by format or camera brand, and sort by capture date within each group. **Read camera brands** fills in brands from available local metadata for formats such as DNG and JPEG. **Select all** selects the filtered results. |
 | Detail | Inspect each resource's filename, role, UTI and size when available. Switch between originals to see their previews and available camera, lens and exposure data. A RAW decoder failure leaves extraction available. |
 | Batch export | Select RAW, JPEG or both. The paired mode requires both originals and reports how many photos lack the requested resources. A HEIF + RAW asset supports RAW-only export. |
 | Progress and retry | Follow the active file and completed count, cancel a batch or retry unfinished files. For duplicate filenames, keep both with a numbered suffix or report the conflict. |
@@ -125,7 +127,7 @@ Apple documents how one photo asset can own multiple underlying files and how Ph
 
 ## Privacy
 
-RawBridge reads the assets you authorize and processes photos and metadata on your device. Photos access uses the `.readWrite` authorization level, and the app leaves library originals untouched. Preferences are stored locally. The app has no account, analytics SDK or third-party backend. Photos downloads originals from iCloud only when enabled. You choose where files go when saving or sharing.
+RawBridge reads the assets you authorize and processes photos and metadata on your device. Photos access uses the `.readWrite` authorization level, and the app leaves library originals untouched. Preferences and a protected cache of the last refreshed list (asset IDs, filenames, format groups and RAW extensions) are stored locally. The cache is checked against the photos you can access before display. The app has no account, analytics SDK or third-party backend. Photos downloads originals from iCloud only when enabled. You choose where files go when saving or sharing.
 
 ## Contributing
 

@@ -3,82 +3,163 @@ import SwiftUI
 
 @MainActor
 final class LibraryViewModel: ObservableObject {
-    @Published var access = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-    @Published private(set) var items: [PhotoAsset] = []
+    @Published private(set) var access = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    @Published private(set) var items: [LibraryItem] = []
     @Published private(set) var total = 0
+    @Published private(set) var scanned = 0
     @Published private(set) var scanning = false
+    @Published private(set) var restoring = false
+    @Published private(set) var hasSnapshot = false
     @Published private(set) var indexing = false
-    @Published private var indexed: [String: String] = [:]
-    private var indexGeneration = UUID()
+    @Published private(set) var cacheSaveFailed = false
     @Published private(set) var brands: [String] = []
-    @Published private var proRAW: Set<String> = []
-    func badge(for item: PhotoAsset) -> String {
-        let ext = item.originals.first { $0.format == .raw }.map { ($0.filename as NSString).pathExtension.uppercased() }
-        if proRAW.contains(item.id) { return item.label.replacingOccurrences(of: "RAW", with: "ProRAW") }
-        guard let ext, RAWDetectionService.extensions.contains(ext.lowercased()) else { return item.label }
-        return "\(item.label) · \(ext)"
+    @Published private var indexed: [String: String] = [:]
+
+    private let service: PhotoLibraryService
+    private var observer: LibraryObserver?
+    private var initialized = false
+    @Published private(set) var accessRevision = UUID()
+    private var listVersion = UUID()
+    private var revision = UUID()
+    private var scanTask: Task<[LibraryItem], Error>?
+    private var brandRevision = UUID()
+
+    init(service: PhotoLibraryService = PhotoLibraryService()) {
+        self.service = service
     }
-    func record(_ metadata: CameraMetadata, for item: PhotoAsset) {
-        if metadata.isProRAW && item.formats.contains(.raw) { proRAW.insert(item.id) }
+
+    func brand(for item: LibraryItem) -> String? {
+        indexed[item.id] ?? MetadataService.knownBrand(rawExtension: item.record.rawExtension)
+    }
+
+    func record(_ metadata: CameraMetadata, for item: LibraryItem) {
+        guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
+        if metadata.isProRAW && items[index].record.format == .raw {
+            items[index].record.format = .proRAW
+        }
         if let make = metadata.make {
             let name = MetadataService.normalize(make)
             indexed[item.id] = name
-            updateBrands([name])
+            if !brands.contains(name) { brands = (brands + [name]).sorted() }
         }
     }
-    private var observer: LibraryObserver?
-    private func updateBrands(_ newValues: [String]) {
-        let updated = Set(brands).union(newValues).sorted()
-        if updated != brands { brands = updated }
-    }
-    func brand(for item: PhotoAsset) -> String? { indexed[item.id] ?? MetadataService.knownBrand(item) }
+
     func indexBrands() async {
-        guard !indexing else { return }
-        let token = indexGeneration
+        guard !indexing, !scanning, !restoring else { return }
+        let token = brandRevision
         indexing = true
-        defer { if token == indexGeneration { indexing = false } }
+        defer { if token == brandRevision { indexing = false } }
         for item in items where brand(for: item) == nil {
             let metadata = await MetadataService.localMetadata(item.asset)
-            guard token == indexGeneration, !Task.isCancelled else { return }
+            guard token == brandRevision, !Task.isCancelled else { return }
             if let metadata { record(metadata, for: item) }
         }
     }
-    private var generation = UUID()
 
     func request() async {
         _ = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
-        await refresh()
+        await synchronizeAccess()
+    }
+
+    /// Foreground and permission events can prune the saved list, but never discover new resources.
+    func synchronizeAccess(checkLimitedSelection: Bool = false) async {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        let changed = status != access
+        if initialized && !changed {
+            if status == .limited && checkLimitedSelection { await pruneLimitedList() }
+            return
+        }
+        if changed { accessRevision = UUID() }
+        initialized = true
+        access = status
+        let token = invalidateWork()
+        items = []
+        brands = []
+        indexed = [:]
+        hasSnapshot = false
+        guard status == .authorized || status == .limited else {
+            observer = nil
+            await service.forget()
+            return
+        }
+        if status == .limited && observer == nil {
+            observer = LibraryObserver { [weak self] in
+                Task { @MainActor in await self?.synchronizeAccess(checkLimitedSelection: true) }
+            }
+        } else if status == .authorized { observer = nil }
+        restoring = true
+        let visible = await service.restore()
+        guard token == revision else { return }
+        restoring = false
+        if let visible {
+            replaceItems(visible)
+            if status == .limited { await persist(visible, token: token) }
+        }
+    }
+
+    private func pruneLimitedList() async {
+        guard hasSnapshot, !restoring else { return }
+        let version = listVersion
+        let token = revision
+        let visible = await service.authorizedItems(items.map(\.record))
+        guard token == revision, version == listVersion, access == .limited,
+              visible.count < items.count else { return }
+        let allowed = Set(visible.map(\.id))
+        indexed = indexed.filter { allowed.contains($0.key) }
+        accessRevision = UUID()
+        replaceItems(visible)
+        await persist(visible, token: token)
     }
 
     func refresh() async {
-        let token = UUID()
-        generation = token
-        indexGeneration = UUID()
-        indexing = false
-        access = PHPhotoLibrary.authorizationStatus(for: .readWrite)
-        items = []
-        brands = []
-        total = 0
-        scanning = false
-        if access != .authorized { indexed = [:]; proRAW = [] }
-        guard access == .authorized || access == .limited else { observer = nil; return }
-        if observer == nil {
-            observer = LibraryObserver { [weak self] in
-                Task { @MainActor in await self?.refresh() }
-            }
-        }
+        await synchronizeAccess()
+        guard access == .authorized || access == .limited, !scanning, !restoring else { return }
+        let token = invalidateWork()
         scanning = true
-        defer { if generation == token { scanning = false } }
-        let service = PhotoLibraryService()
-        let count = await service.start()
-        guard generation == token else { return }
-        total = count
-        while items.count < count, generation == token, !Task.isCancelled {
-            guard let batch = try? await service.page(from: items.count, limit: 100),
-                  !batch.isEmpty, generation == token, !Task.isCancelled else { return }
-            items.append(contentsOf: batch)
-            updateBrands(batch.compactMap(brand))
+        scanned = 0
+        total = 0
+        cacheSaveFailed = false
+        let task = Task { try await service.scan { [weak self] done, count in
+            guard self?.revision == token else { return }
+            self?.scanned = done
+            self?.total = count
+        } }
+        scanTask = task
+        defer {
+            if revision == token { scanning = false; scanTask = nil }
         }
+        guard let result = try? await task.value, revision == token else { return }
+        guard PHPhotoLibrary.authorizationStatus(for: .readWrite) == access else {
+            await synchronizeAccess()
+            return
+        }
+        let visible = access == .limited ? await service.authorizedItems(result.map(\.record)) : result
+        guard token == revision else { return }
+        replaceItems(visible)
+        await persist(visible, token: token)
+    }
+
+    private func invalidateWork() -> UUID {
+        scanTask?.cancel()
+        scanTask = nil
+        revision = UUID()
+        brandRevision = UUID()
+        scanning = false
+        restoring = false
+        indexing = false
+        return revision
+    }
+
+    private func replaceItems(_ result: [LibraryItem]) {
+        listVersion = UUID()
+        items = result
+        brands = Set(result.compactMap(brand)).sorted()
+        hasSnapshot = true
+    }
+
+    private func persist(_ result: [LibraryItem], token: UUID) async {
+        do { try await service.save(result.map(\.record)) }
+        catch { if revision == token { cacheSaveFailed = true } }
     }
 }
 

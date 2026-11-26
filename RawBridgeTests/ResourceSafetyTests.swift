@@ -3,6 +3,19 @@ import UniformTypeIdentifiers
 @testable import RawBridge
 
 final class ResourceSafetyTests: XCTestCase {
+    func testOriginalFormatGroupsAreExclusive() {
+        XCTAssertEqual(LibraryFormat(formats: [.raw]), .raw)
+        XCTAssertEqual(LibraryFormat(formats: [.jpeg, .raw]), .jpegRAW)
+        XCTAssertEqual(LibraryFormat(formats: [.heif, .raw]), .heifRAW)
+        XCTAssertEqual(LibraryFormat(formats: [.raw], isProRAW: true), .proRAW)
+        XCTAssertEqual(LibraryFormat(formats: [.raw, .jpeg], isProRAW: true), .jpegRAW)
+        XCTAssertEqual(LibraryFormat(formats: [.jpeg]), .jpeg)
+        XCTAssertEqual(LibraryFormat(formats: [.heif]), .heif)
+        for formats: Set<PhotoFormat> in [[], [.other], [.raw, .other], [.raw, .jpeg, .heif]] {
+            XCTAssertEqual(LibraryFormat(formats: formats), .other)
+        }
+    }
+
     func testCameraExtensionsAndUTIPrecedence() {
         for ext in ["NEF","NRW","CR2","CR3","ARW","RAF","RW2","DNG","RWL","ORF","PEF"] {
             XCTAssertEqual(RAWDetectionService.format(uti: "public.data", filename: "frame.\(ext)"), .raw)

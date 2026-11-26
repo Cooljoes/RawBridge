@@ -6,6 +6,11 @@ struct SettingsView: View {
     @AppStorage("defaultMode") private var mode = ExportMode.raw
     @AppStorage("collision") private var collision = CollisionPolicy.keepBoth
 
+    private var version: String {
+        let info = Bundle.main.infoDictionary
+        return "\(info?["CFBundleShortVersionString"] as? String ?? "—") (\(info?["CFBundleVersion"] as? String ?? "—"))"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -26,7 +31,7 @@ struct SettingsView: View {
                     Link("App language in Settings", destination: URL(string: UIApplication.openSettingsURLString)!)
                 }
                 Section("About RawBridge") {
-                    LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
+                    LabeledContent("Version", value: version)
                     Text("RawBridge reads the originals in your Photos library and exports the files you choose.")
                 }
                 Section("Privacy") {

@@ -5,6 +5,51 @@ import UniformTypeIdentifiers
 @testable import RawBridge
 
 final class PairedResourceTests: XCTestCase {
+    @MainActor
+    func testManualRefreshAndColdLaunchCache() async throws {
+        #if targetEnvironment(simulator)
+        let docs = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
+        let jpeg = docs.appendingPathComponent("RawBridgeTestFixture/iss030e122639.JPG")
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: jpeg.path), "Install the optional simulator fixture.")
+        let cache = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: cache) }
+        let first = LibraryViewModel(service: PhotoLibraryService(cacheURL: cache))
+        await first.synchronizeAccess()
+        XCTAssertFalse(first.hasSnapshot)
+        XCTAssertTrue(first.items.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cache.path))
+        await first.refresh()
+        XCTAssertTrue(first.hasSnapshot)
+        XCTAssertFalse(first.cacheSaveFailed)
+        let originalIDs = first.items.map(\.id)
+        XCTAssertFalse(originalIDs.isEmpty)
+
+        var identifier: String?
+        try await PHPhotoLibrary.shared().performChanges {
+            let request = PHAssetCreationRequest.forAsset()
+            request.addResource(with: .photo, fileURL: jpeg, options: nil)
+            identifier = request.placeholderForCreatedAsset?.localIdentifier
+        }
+        let newID = try XCTUnwrap(identifier)
+        let reopened = LibraryViewModel(service: PhotoLibraryService(cacheURL: cache))
+        await reopened.synchronizeAccess()
+        await reopened.synchronizeAccess(checkLimitedSelection: true)
+        XCTAssertEqual(reopened.items.map(\.id), originalIDs, "A cold or foreground launch must not discover new photos")
+        XCTAssertFalse(reopened.items.contains { $0.id == newID })
+        await reopened.refresh()
+        XCTAssertEqual(reopened.items.first { $0.id == newID }?.record.format, .jpeg)
+
+        let emptyCache = PhotoLibraryService(cacheURL: cache)
+        try await emptyCache.save([])
+        let empty = LibraryViewModel(service: emptyCache)
+        await empty.synchronizeAccess()
+        XCTAssertTrue(empty.hasSnapshot)
+        XCTAssertTrue(empty.items.isEmpty)
+        #else
+        throw XCTSkip("Creates a photo in a simulator library only.")
+        #endif
+    }
+
     func testHEIFAndRAWDoesNotOfferJPEG() async throws {
         #if targetEnvironment(simulator)
         let docs = try XCTUnwrap(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first)
@@ -28,6 +73,7 @@ final class PairedResourceTests: XCTestCase {
         let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(identifier)], options: nil).firstObject)
         let item = PhotoAsset(asset)
         XCTAssertEqual(item.formats, [.heif, .raw])
+        XCTAssertEqual(LibraryRecord(item).format, .heifRAW)
         XCTAssertTrue(ExportMode.jpeg.resources(in: item).isEmpty)
         XCTAssertTrue(ExportMode.both.resources(in: item).isEmpty)
         let resource = try XCTUnwrap(ExportMode.raw.resources(in: item).first)
@@ -52,6 +98,8 @@ final class PairedResourceTests: XCTestCase {
             identifier = request.placeholderForCreatedAsset?.localIdentifier
         }
         let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(identifier)], options: nil).firstObject)
+        let scanned = try await PhotoLibraryService().scan { _, _ in }
+        XCTAssertEqual(scanned.first { $0.id == asset.localIdentifier }?.record.format, .proRAW)
         let raw = try XCTUnwrap(PhotoAsset(asset).originals.first { $0.format == .raw })
         let file = try await RAWExtractionService.extract(raw, network: false)
         XCTAssertEqual(file.fingerprint, original)
@@ -81,6 +129,7 @@ final class PairedResourceTests: XCTestCase {
             let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(identifier)], options: nil).firstObject)
             let item = PhotoAsset(asset)
             XCTAssertEqual(item.formats, [format])
+            XCTAssertEqual(LibraryRecord(item).format, format == .raw ? .raw : .jpeg)
             let resource = try XCTUnwrap(item.originals.first)
             let exported = try await RAWExtractionService.extract(resource, network: false)
             XCTAssertEqual(exported.fingerprint, try FileIntegrity.read(source))
@@ -114,6 +163,7 @@ final class PairedResourceTests: XCTestCase {
         let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(assetID)], options: nil).firstObject)
         let item = PhotoAsset(asset)
         XCTAssertEqual(item.label, "JPEG + RAW")
+        XCTAssertEqual(LibraryRecord(item).format, .jpegRAW)
         let raw = try XCTUnwrap(item.originals.first { $0.format == .raw })
         let rendered = try XCTUnwrap(item.originals.first { $0.format == .jpeg })
         XCTAssertNotEqual(raw.id, rendered.id)

@@ -19,3 +19,6 @@ xcuserdata/
 .swiftpm/xcode/xcuserdata/
 *.xccheckout
 *.xcscmblueprint
+
+# Machine-specific Xcode signing team
+/Config/Signing.local.xcconfig

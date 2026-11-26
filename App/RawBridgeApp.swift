@@ -2,5 +2,6 @@ import SwiftUI
 
 @main
 struct RawBridgeApp: App {
-    var body: some Scene { WindowGroup { LibraryView() } }
+    @StateObject private var library = LibraryViewModel()
+    var body: some Scene { WindowGroup { LibraryView(library: library) } }
 }

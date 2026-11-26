@@ -2,23 +2,16 @@ import SwiftUI
 import PhotosUI
 
 struct LibraryView: View {
-    @StateObject private var library = LibraryViewModel()
+    @ObservedObject var library: LibraryViewModel
     @Environment(\.scenePhase) private var phase
-    @State private var rawOnly = false
+    @State private var format: LibraryFormat?
     @State private var newest = true
     @State private var selecting = false
     @State private var selected = Set<String>()
-    @State private var batch: [PhotoAsset]?
+    @State private var batch: [String]?
     @State private var manageLimited = false
     @State private var settings = false
     @State private var brand = "All cameras"
-
-    private var visibleItems: [PhotoAsset] {
-        var filtered = library.items
-        if rawOnly { filtered = filtered.filter { $0.formats.contains(.raw) } }
-        if brand != "All cameras" { filtered = filtered.filter { library.brand(for: $0) == brand } }
-        return newest ? filtered : filtered.reversed()
-    }
 
     var body: some View {
         NavigationStack {
@@ -44,86 +37,156 @@ struct LibraryView: View {
                 ToolbarItem(placement: .topBarLeading) { Button { settings = true } label: { Label("Settings", systemImage: "gearshape") } }
                 if library.access == .authorized || library.access == .limited {
                     ToolbarItemGroup(placement: .topBarTrailing) {
+                        Button { Task { await library.refresh() } } label: {
+                            Label("Refresh library", systemImage: "arrow.clockwise")
+                        }.accessibilityIdentifier("refreshLibrary").disabled(library.scanning || library.restoring)
                         Menu {
-                            Toggle("RAW only", isOn: $rawOnly)
                             Toggle("Newest first", isOn: $newest)
                             Picker("Camera", selection: $brand) {
                                 Text("All cameras").tag("All cameras")
                                 ForEach(library.brands, id: \.self) { Text(verbatim: $0).tag($0) }
                             }
                             Button("Read camera brands") { Task { await library.indexBrands() } }
-                            if library.access == .limited { Button("Manage selected photos") { manageLimited = true } }
+                                .disabled(library.items.isEmpty || library.scanning || library.indexing)
                         } label: { Label("Filter and sort", systemImage: "line.3.horizontal.decrease.circle") }
                         Button(selecting ? "Done" : "Select") { selected = []; selecting.toggle() }
+                            .disabled(!library.hasSnapshot)
                     }
                 }
             }
             .sheet(isPresented: $settings) { SettingsView() }
-            .sheet(isPresented: $manageLimited, onDismiss: { Task { await library.refresh() } }) { LimitedPicker() }
+            .sheet(isPresented: $manageLimited, onDismiss: {
+                Task { await library.synchronizeAccess(checkLimitedSelection: true) }
+            }) { LimitedPicker() }
             .sheet(isPresented: Binding(get: { batch != nil }, set: { if !$0 { batch = nil } })) {
-                if let batch { ExportView(items: batch) }
+                if let batch { ResolvedPhotos(ids: batch) { ExportView(items: $0) } }
             }
         }
-        .task { await library.refresh() }
-        .onChange(of: phase) { _, value in if value == .active { Task { await library.refresh() } } }
-        .onChange(of: library.access) { _, _ in selected = []; batch = nil }
+        .id(library.accessRevision)
+        .task { await library.synchronizeAccess() }
+        .onChange(of: phase) { _, value in
+            if value == .active { Task { await library.synchronizeAccess(checkLimitedSelection: true) } }
+        }
+        .onChange(of: library.accessRevision) { _, _ in selected = []; batch = nil; selecting = false }
+        .onChange(of: library.brands) { _, values in
+            if !values.contains(brand) { brand = "All cameras" }
+        }
+        .onChange(of: format) { _, _ in selected = [] }
+        .onChange(of: brand) { _, _ in selected = [] }
     }
 
     private var gallery: some View {
-        let items = visibleItems
+        let brandItems = brand == "All cameras" ? library.items : library.items.filter { library.brand(for: $0) == brand }
+        let groups = Dictionary(grouping: brandItems) { $0.record.format }
+        let categories = LibraryFormat.allCases.filter { (format == nil || format == $0) && groups[$0] != nil }
+        let visible = format.flatMap { groups[$0] } ?? (format == nil ? brandItems : [])
+        let selectedVisible = selecting ? visible.filter { selected.contains($0.id) } : []
         return ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if library.access == .limited {
-                    Button("Manage selected photos") { manageLimited = true }
+            VStack(alignment: .leading, spacing: 14) {
+                if library.access == .limited { Button("Manage selected photos") { manageLimited = true } }
+                if library.hasSnapshot {
+                    Picker("Format", selection: $format) {
+                        Text("All formats").tag(Optional<LibraryFormat>.none)
+                        ForEach(LibraryFormat.allCases) { value in
+                            Text(LocalizedStringKey(value.titleKey)).tag(Optional(value))
+                        }
+                    }.pickerStyle(.menu).accessibilityIdentifier("formatPicker")
                 }
-                if library.scanning { ProgressView(value: Double(library.items.count), total: Double(max(1, library.total))) }
-                if library.indexing { ProgressView("Reading camera brands…") }
-                if items.isEmpty && !library.scanning {
+                if library.scanning {
+                    ProgressView(value: Double(library.scanned), total: Double(max(1, library.total))) {
+                        Text("Refreshing library…")
+                    }.accessibilityIdentifier("scanProgress")
+                } else if library.restoring {
+                    ProgressView("Opening saved list…")
+                } else if !library.hasSnapshot {
+                    ContentUnavailableView {
+                        Label("Refresh your library", systemImage: "photo.stack")
+                    } description: { Text("Tap Refresh to find originals and group your photos by format.") }
+                        actions: { Button("Refresh library") { Task { await library.refresh() } }.buttonStyle(.borderedProminent) }
+                } else if visible.isEmpty {
                     ContentUnavailableView("No matching photos", systemImage: "photo.stack")
                 }
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 142, maximum: 240), spacing: 12)], alignment: .leading, spacing: 18) {
-                    ForEach(items) { item in
-                        if selecting {
-                            Button {
-                                if !selected.insert(item.id).inserted { selected.remove(item.id) }
-                            } label: {
-                                tile(item).overlay(alignment: .topTrailing) {
-                                    Image(systemName: selected.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                                        .symbolRenderingMode(.palette).foregroundStyle(.white, .blue)
-                                        .padding(7).shadow(radius: 2)
-                                }
-                            }.accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
-                        } else {
-                            NavigationLink { ResourceView(item: item) { library.record($0, for: item) } } label: { tile(item) }
+                if library.cacheSaveFailed { Text("This list could not be saved on this device.").foregroundStyle(.secondary) }
+                if library.indexing { ProgressView("Reading camera brands…") }
+                ForEach(categories) { category in
+                    let entries = groups[category] ?? []
+                    HStack {
+                        Text(LocalizedStringKey(category.titleKey)).font(.headline)
+                        Text(entries.count.formatted()).font(.subheadline).foregroundStyle(.secondary)
+                    }.accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 142, maximum: 240), spacing: 12)],
+                              alignment: .leading, spacing: 18) {
+                        ForEach(newest ? entries : Array(entries.reversed())) { item in
+                            if selecting {
+                                Button {
+                                    if !selected.insert(item.id).inserted { selected.remove(item.id) }
+                                } label: {
+                                    tile(item).overlay(alignment: .topTrailing) {
+                                        Image(systemName: selected.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                                            .symbolRenderingMode(.palette).foregroundStyle(.white, .blue)
+                                            .padding(7).shadow(radius: 2)
+                                    }
+                                }.accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
+                            } else {
+                                NavigationLink {
+                                    ResolvedPhotos(ids: [item.id]) { photos in
+                                        if let photo = photos.first {
+                                            ResourceView(item: photo) { library.record($0, for: item) }
+                                        }
+                                    }
+                                } label: { tile(item) }
+                                .accessibilityIdentifier("libraryTile-\(category.id)")
+                            }
                         }
-                    }
-                }.buttonStyle(.plain)
+                    }.buttonStyle(.plain)
+                }
             }.padding()
         }
         .refreshable { await library.refresh() }
         .safeAreaInset(edge: .bottom) {
             if selecting {
                 HStack {
-                    Button("Select all") { selected = Set(items.map(\.id)) }
+                    Button("Select all") { selected = Set(visible.map(\.id)) }
                     Spacer()
-                    Text(selected.intersection(items.map(\.id)).count.formatted()).monospacedDigit()
-                    Button("Export") { batch = items.filter { selected.contains($0.id) } }
-                        .buttonStyle(.borderedProminent).disabled(!items.contains { selected.contains($0.id) })
+                    Text(selectedVisible.count.formatted()).monospacedDigit()
+                    Button("Export") { batch = selectedVisible.map(\.id) }
+                        .buttonStyle(.borderedProminent).disabled(selectedVisible.isEmpty)
                 }.padding().background(.bar)
             }
         }
     }
 
-    private func tile(_ item: PhotoAsset) -> some View {
+    private func tile(_ item: LibraryItem) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             AssetThumbnail(asset: item.asset)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
                 .overlay(alignment: .bottomLeading) {
-                    Text(verbatim: library.badge(for: item)).font(.caption2.bold()).foregroundStyle(.white)
-                        .padding(.horizontal, 6).padding(.vertical, 3).background(.black.opacity(0.72), in: Capsule()).padding(6)
+                    if let ext = item.record.rawExtension {
+                        Text(verbatim: ext).font(.caption2.bold()).foregroundStyle(.white)
+                            .padding(.horizontal, 6).padding(.vertical, 3).background(.black.opacity(0.72), in: Capsule()).padding(6)
+                    }
                 }
-            Text(verbatim: item.title).font(.subheadline).lineLimit(1)
+            Text(verbatim: item.record.title).font(.subheadline).lineLimit(1)
             if let date = item.asset.creationDate { Text(date, style: .date).font(.caption).foregroundStyle(.secondary) }
+        }
+    }
+}
+
+private struct ResolvedPhotos<Content: View>: View {
+    let ids: [String]
+    @ViewBuilder var content: ([PhotoAsset]) -> Content
+    @State private var photos: [PhotoAsset]?
+
+    var body: some View {
+        Group {
+            if let photos {
+                if photos.isEmpty { ContentUnavailableView("Photos no longer available", systemImage: "photo.stack") }
+                else { content(photos) }
+            } else { ProgressView() }
+        }
+        .task(id: ids) {
+            let current = await PhotoLibraryService.resolve(ids)
+            if !Task.isCancelled { photos = current }
         }
     }
 }

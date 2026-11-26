@@ -34,6 +34,17 @@
         }
       }
     },
+    "All formats": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全部格式"
+          }
+        }
+      }
+    },
     "Allow iCloud downloads": {
       "extractionState": "manual",
       "localizations": {
@@ -309,6 +320,28 @@
         }
       }
     },
+    "HEIF only": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅 HEIF"
+          }
+        }
+      }
+    },
+    "JPEG only": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "仅 JPEG"
+          }
+        }
+      }
+    },
     "Keep both": {
       "extractionState": "manual",
       "localizations": {
@@ -408,6 +441,17 @@
         }
       }
     },
+    "Opening saved list…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在打开上次的列表…"
+          }
+        }
+      }
+    },
     "Original preview": {
       "extractionState": "manual",
       "localizations": {
@@ -415,6 +459,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "原始资源预览"
+          }
+        }
+      }
+    },
+    "Other formats": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他格式"
           }
         }
       }
@@ -459,6 +514,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "RawBridge 在设备上处理照片与相机元数据。开启下载后，系统照片图库可从 iCloud 获取原片。保存或分享的目的地由你选择。"
+          }
+        }
+      }
+    },
+    "Photos no longer available": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "照片已不可访问"
           }
         }
       }
@@ -535,7 +601,7 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "仅显示 RAW"
+            "value": "仅 RAW"
           }
         }
       }
@@ -580,6 +646,39 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在读取原片…"
+          }
+        }
+      }
+    },
+    "Refresh library": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新图库"
+          }
+        }
+      }
+    },
+    "Refresh your library": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "刷新图库以查看照片"
+          }
+        }
+      }
+    },
+    "Refreshing library…": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在刷新图库…"
           }
         }
       }
@@ -705,6 +804,17 @@
         }
       }
     },
+    "Tap Refresh to find originals and group your photos by format.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "点「刷新图库」读取原片，并按格式查看照片。"
+          }
+        }
+      }
+    },
     "The file contains a rendered image instead of RAW data.": {
       "extractionState": "manual",
       "localizations": {
@@ -756,6 +866,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "此设备无法解码预览，仍可提取原始文件。"
+          }
+        }
+      }
+    },
+    "This list could not be saved on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本次列表未能保存到设备。"
           }
         }
       }

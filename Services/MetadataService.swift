@@ -53,21 +53,18 @@ enum MetadataService {
         }
     }
 
-    static func knownBrand(_ item: PhotoAsset) -> String? {
-        for raw in item.originals where raw.format == .raw {
-            switch (raw.filename as NSString).pathExtension.lowercased() {
-            case "nef", "nrw": return "Nikon"
-            case "cr2", "cr3": return "Canon"
-            case "arw": return "Sony"
-            case "raf": return "Fujifilm"
-            case "rw2": return "Panasonic"
-            case "rwl": return "Leica"
-            case "orf": return "OM SYSTEM / Olympus"
-            case "pef": return "Pentax"
-            default: continue
-            }
+    static func knownBrand(rawExtension: String?) -> String? {
+        switch rawExtension?.lowercased() {
+        case "nef", "nrw": return "Nikon"
+        case "cr2", "cr3": return "Canon"
+        case "arw": return "Sony"
+        case "raf": return "Fujifilm"
+        case "rw2": return "Panasonic"
+        case "rwl": return "Leica"
+        case "orf": return "OM SYSTEM / Olympus"
+        case "pef": return "Pentax"
+        default: return nil
         }
-        return nil
     }
 
     static func normalize(_ make: String) -> String {

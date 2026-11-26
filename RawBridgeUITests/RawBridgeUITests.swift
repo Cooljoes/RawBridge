@@ -25,8 +25,27 @@ final class RawBridgeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
-        let tile = app.buttons.containing(NSPredicate(format: "label CONTAINS[c] %@", "iss030e122639")).firstMatch
-        try XCTSkipUnless(tile.waitForExistence(timeout: 4), "Optional simulator Nikon pair is not installed.")
+        let refresh = app.buttons["refreshLibrary"]
+        try XCTSkipUnless(refresh.waitForExistence(timeout: 5), "Grant access to the simulator fixture library.")
+        refresh.tap()
+        let picker = app.buttons["formatPicker"]
+        let refreshFinished = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "isEnabled == true"), object: refresh)
+        guard XCTWaiter.wait(for: [refreshFinished], timeout: 90) == .completed,
+              picker.waitForExistence(timeout: 10) else {
+            XCTFail("The manual refresh did not display the format filter.")
+            return
+        }
+        picker.tap()
+        app.buttons["RAW only"].tap()
+        let solo = app.buttons["libraryTile-raw"].firstMatch
+        try XCTSkipUnless(solo.waitForExistence(timeout: 5), "Install the optional standalone Nikon fixture.")
+        XCTAssertFalse(app.buttons["libraryTile-jpegRAW"].firstMatch.exists)
+        picker.tap()
+        app.buttons["JPEG + RAW"].tap()
+        let tile = app.buttons["libraryTile-jpegRAW"].firstMatch
+        try XCTSkipUnless(tile.waitForExistence(timeout: 5), "Install the optional Nikon pair.")
+        XCTAssertFalse(solo.exists)
         tile.tap()
         let rawPreview = app.buttons["RAW"]
         XCTAssertTrue(rawPreview.waitForExistence(timeout: 8))
@@ -45,7 +64,15 @@ final class RawBridgeUITests: XCTestCase {
             return
         }
         closePicker.tap()
-        app.buttons["Prepare for sharing"].tap()
+        let prepare = app.buttons["Prepare for sharing"]
+        let pickerDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            !closePicker.exists && prepare.isHittable
+        }, object: nil)
+        guard XCTWaiter.wait(for: [pickerDismissed], timeout: 20) == .completed else {
+            XCTFail("The Files picker did not return control to the export sheet.")
+            return
+        }
+        prepare.tap()
         let share = app.buttons["Share"]
         XCTAssertTrue(share.waitForExistence(timeout: 15))
         share.tap()

@@ -27,6 +27,7 @@
 		94A9C6DEDC63C4EFC02161BA /* ExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F6D1523BE90E424D0500268 /* ExportService.swift */; };
 		ACE0FCDA2C41E9DD38D067FD /* LibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C80B14D1B7782A4523C4215 /* LibraryView.swift */; };
 		ACF1EBFA7B622AE5E0835A98 /* IntegrityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86648AA7F52FD3B110466943 /* IntegrityView.swift */; };
+		B18980FA254109CDEDB57405 /* LibraryItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A0B9FACFF7662A52338E29 /* LibraryItem.swift */; };
 		B7D00B1BD57B54B756F7173A /* RawBridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A2F4BACB601797DB19F5C49 /* RawBridgeApp.swift */; };
 		C1B32B77D02CC7B03FE513E5 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54A6093E3904F3DEA8F53FCD /* SettingsView.swift */; };
 		CAFC9463959DDC6D559C4C8D /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18204E79034442F97EB7A02 /* LibraryViewModel.swift */; };
@@ -56,6 +57,7 @@
 /* Begin PBXFileReference section */
 		0E8A62089B392C57B6D5F8E8 /* PreviewService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewService.swift; sourceTree = "<group>"; };
 		166C68B3C248872A6BC7758E /* InterruptibleWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterruptibleWriter.swift; sourceTree = "<group>"; };
+		18A0B9FACFF7662A52338E29 /* LibraryItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryItem.swift; sourceTree = "<group>"; };
 		2061D796904F1ECD9EED0C78 /* RawBridge.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = RawBridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3A2F4BACB601797DB19F5C49 /* RawBridgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawBridgeApp.swift; sourceTree = "<group>"; };
 		50C608E53D63B4A5C0272F23 /* PairedResourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedResourceTests.swift; sourceTree = "<group>"; };
@@ -70,6 +72,7 @@
 		936B8A178A6E176B15D2D470 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9764FFF16A0197BBFCD750E7 /* ExportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportViewModel.swift; sourceTree = "<group>"; };
 		996ADC96F9331C65F49BBFDF /* RawBridgeUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RawBridgeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9AE041D75DE06FCF9F3B552E /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
 		9EE81CD6E4A8A3D140426FBD /* PhotoDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoDetailViewModel.swift; sourceTree = "<group>"; };
 		A293A11EF4ACEF53CEB8DA19 /* RAWDetectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAWDetectionService.swift; sourceTree = "<group>"; };
 		A7657A8675AE82BD79ABE91F /* AssetThumbnail.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetThumbnail.swift; sourceTree = "<group>"; };
@@ -99,6 +102,7 @@
 			isa = PBXGroup;
 			children = (
 				8E114F7E0EC8BBF089CCB31B /* App */,
+				F0DB6B34FEC38628527452F5 /* Config */,
 				74938563095289D51DD64089 /* Models */,
 				7750B8A65BE24A18E2B4E4C4 /* RawBridgeTests */,
 				A9E72131679FFBF108CEAEC6 /* RawBridgeUITests */,
@@ -137,6 +141,7 @@
 			isa = PBXGroup;
 			children = (
 				7AD5C1205BA2D13E4B046D5F /* ExportTask.swift */,
+				18A0B9FACFF7662A52338E29 /* LibraryItem.swift */,
 				EBC124DFC7413EAA85F78C96 /* PhotoAsset.swift */,
 				8DC71B60403BB81BB04583E0 /* PhotoResource.swift */,
 			);
@@ -233,6 +238,14 @@
 				9EE81CD6E4A8A3D140426FBD /* PhotoDetailViewModel.swift */,
 			);
 			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		F0DB6B34FEC38628527452F5 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				9AE041D75DE06FCF9F3B552E /* Debug.xcconfig */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -354,6 +367,7 @@
 				6E61614674BB82DFAE518ABC /* FileIntegrity.swift in Sources */,
 				ACF1EBFA7B622AE5E0835A98 /* IntegrityView.swift in Sources */,
 				1199743172C8409841D02F1C /* InterruptibleWriter.swift in Sources */,
+				B18980FA254109CDEDB57405 /* LibraryItem.swift in Sources */,
 				ACE0FCDA2C41E9DD38D067FD /* LibraryView.swift in Sources */,
 				CAFC9463959DDC6D559C4C8D /* LibraryViewModel.swift in Sources */,
 				05A4C74B87C16199908F2B2D /* MetadataService.swift in Sources */,
@@ -495,7 +509,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -508,7 +522,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -540,6 +554,7 @@
 		};
 		AEF3916E7CE518933965B52F /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9AE041D75DE06FCF9F3B552E /* Debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -572,7 +587,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -591,7 +606,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 0.2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
