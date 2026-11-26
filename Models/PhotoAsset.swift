@@ -10,7 +10,14 @@ struct PhotoAsset: Identifiable {
         let labels = [PhotoFormat.jpeg, .heif, .raw].filter(formats.contains).map(\.rawValue)
         return labels.isEmpty ? "—" : labels.joined(separator: " + ")
     }
-    var title: String { originals.first?.filename.nonEmpty ?? resources.first?.filename.nonEmpty ?? "—" }
+    var rawOriginal: PhotoResource? { originals.first { $0.format == .raw } }
+
+    var title: String {
+        if formats == [.jpeg, .raw], let raw = rawOriginal {
+            return raw.filename.nonEmpty ?? raw.displayFormat
+        }
+        return originals.first?.filename.nonEmpty ?? resources.first?.filename.nonEmpty ?? "—"
+    }
 
     init(_ asset: PHAsset) {
         self.asset = asset

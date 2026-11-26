@@ -36,7 +36,7 @@ enum LibraryFormat: String, Codable, CaseIterable, Identifiable {
 /// The disk cache contains only the fields needed to display the last refreshed list.
 struct LibraryRecord: Codable, Identifiable {
     let id: String
-    let title: String
+    private let title: String
     var format: LibraryFormat
     let rawExtension: String?
 
@@ -44,8 +44,23 @@ struct LibraryRecord: Codable, Identifiable {
         id = photo.id
         title = photo.title
         format = LibraryFormat(formats: photo.formats)
-        rawExtension = photo.originals.first { $0.format == .raw }
-            .map { ($0.filename as NSString).pathExtension.uppercased() }?.nonEmpty
+        rawExtension = photo.rawOriginal?.rawExtension
+    }
+
+    var displayFilename: String {
+        guard format == .jpegRAW else { return title }
+        let name = title as NSString
+        // A 0.2.0 snapshot may contain the JPEG's name. Show its stem beside the
+        // cached RAW badge until a manual refresh supplies the actual RAW filename.
+        if !name.pathExtension.isEmpty && name.pathExtension.uppercased() != rawExtension {
+            return name.deletingPathExtension
+        }
+        return title
+    }
+
+    var formatBadge: String? {
+        guard format == .jpegRAW else { return rawExtension }
+        return rawExtension.map { ".\($0)" } ?? PhotoFormat.raw.rawValue
     }
 }
 

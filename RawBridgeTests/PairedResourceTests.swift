@@ -156,23 +156,33 @@ final class PairedResourceTests: XCTestCase {
         var assetID: String?
         try await PHPhotoLibrary.shared().performChanges {
             let request = PHAssetCreationRequest.forAsset()
-            request.addResource(with: .photo, fileURL: jpeg, options: nil)
+            let jpegOptions = PHAssetResourceCreationOptions()
+            jpegOptions.originalFilename = "separate-preview.JPG"
+            request.addResource(with: .photo, fileURL: jpeg, options: jpegOptions)
             request.addResource(with: .alternatePhoto, fileURL: nef, options: nil)
             assetID = request.placeholderForCreatedAsset?.localIdentifier
         }
         let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(assetID)], options: nil).firstObject)
         let item = PhotoAsset(asset)
         XCTAssertEqual(item.label, "JPEG + RAW")
-        XCTAssertEqual(LibraryRecord(item).format, .jpegRAW)
+        let record = LibraryRecord(item)
+        XCTAssertEqual(record.format, .jpegRAW)
+        XCTAssertEqual(record.formatBadge, ".NEF")
         let raw = try XCTUnwrap(item.originals.first { $0.format == .raw })
         let rendered = try XCTUnwrap(item.originals.first { $0.format == .jpeg })
+        // PhotoKit may normalize paired basenames when importing into Photos.
+        XCTAssertEqual(record.displayFilename, raw.filename)
+        XCTAssertTrue(record.displayFilename.hasSuffix(".NEF"))
+        XCTAssertEqual(raw.displayFormat, ".NEF")
+        XCTAssertEqual(rendered.filename, "separate-preview.JPG")
+        XCTAssertEqual(rendered.displayFormat, "JPEG")
         XCTAssertNotEqual(raw.id, rendered.id)
         let file = try await RAWExtractionService.extract(raw, network: false)
         let destination = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
         defer { try? FileManager.default.removeItem(at: destination) }
         let output = try await ExportService.save(file, in: destination, policy: .keepBoth)
-        XCTAssertEqual(output.lastPathComponent, nef.lastPathComponent)
+        XCTAssertEqual(output.lastPathComponent, raw.filename)
         XCTAssertEqual(try FileIntegrity.read(output), original)
         let jpg = try await RAWExtractionService.extract(rendered, network: false)
         XCTAssertEqual(jpg.fingerprint, try FileIntegrity.read(jpeg))
@@ -193,8 +203,9 @@ final class PairedResourceTests: XCTestCase {
         queue.resume(network: false, policy: .keepBoth)
         while queue.running { try await Task.sleep(for: .milliseconds(15)) }
         XCTAssertEqual(queue.finished, 2)
-        XCTAssertEqual(try FileIntegrity.read(destination.appendingPathComponent("iss030e122639 (2).NEF")), original)
-        XCTAssertEqual(try FileIntegrity.read(destination.appendingPathComponent("iss030e122639.JPG")), jpg.fingerprint)
+        let duplicateName = (raw.filename as NSString).deletingPathExtension + " (2).NEF"
+        XCTAssertEqual(try FileIntegrity.read(destination.appendingPathComponent(duplicateName)), original)
+        XCTAssertEqual(try FileIntegrity.read(destination.appendingPathComponent(rendered.filename)), jpg.fingerprint)
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: destination.path).count, 3)
         let cancelFolder = destination.appendingPathComponent("cancel")
         try FileManager.default.createDirectory(at: cancelFolder, withIntermediateDirectories: false)

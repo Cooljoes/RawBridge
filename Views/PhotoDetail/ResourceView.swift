@@ -38,7 +38,7 @@ struct ResourceView: View {
         VStack(spacing: 12) {
             if choices.count > 1 {
                 Picker("Preview", selection: Binding(get: { current?.id ?? -1 }, set: { choice = $0 })) {
-                    ForEach(choices) { resource in Text(verbatim: resource.format.rawValue).tag(resource.id) }
+                    ForEach(choices) { resource in Text(verbatim: resource.displayFormat).tag(resource.id) }
                 }.pickerStyle(.segmented)
             }
             if let image = detail.image {
@@ -77,7 +77,7 @@ struct ResourceView: View {
                 Section(resource.filename.nonEmpty ?? "—") {
                     LabeledContent("Resource", value: resource.role)
                     LabeledContent("UTI", value: resource.uti).textSelection(.enabled)
-                    LabeledContent("Format", value: resource.format.rawValue)
+                    LabeledContent("Format", value: resource.displayFormat)
                     if let size = resource.size.map(Int64.init) ?? (current?.id == resource.id ? detail.bytes : nil) {
                         LabeledContent("File size", value: ByteCountFormatter.string(fromByteCount: size, countStyle: .file))
                     }

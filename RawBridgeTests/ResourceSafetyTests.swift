@@ -16,6 +16,20 @@ final class ResourceSafetyTests: XCTestCase {
         }
     }
 
+    func testLegacyPairDisplaysTheCachedRAWExtension() throws {
+        let oldList = Data(#"""
+            [
+                {"id":"1","title":"preview.JPG","format":"JPEG + RAW","rawExtension":"NEF"},
+                {"id":"2","title":"preview.jpeg","format":"JPEG + RAW"},
+                {"id":"3","title":"frame.cr3","format":"JPEG + RAW","rawExtension":"CR3"},
+                {"id":"4","title":"frame.JPG","format":"JPEG"}
+            ]
+            """#.utf8)
+        let records = try JSONDecoder().decode([LibraryRecord].self, from: oldList)
+        XCTAssertEqual(records.map(\.displayFilename), ["preview", "preview", "frame.cr3", "frame.JPG"])
+        XCTAssertEqual(records.map(\.formatBadge), [".NEF", "RAW", ".CR3", nil])
+    }
+
     func testCameraExtensionsAndUTIPrecedence() {
         for ext in ["NEF","NRW","CR2","CR3","ARW","RAF","RW2","DNG","RWL","ORF","PEF"] {
             XCTAssertEqual(RAWDetectionService.format(uti: "public.data", filename: "frame.\(ext)"), .raw)

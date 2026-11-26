@@ -16,12 +16,12 @@ A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If 
 
 [**Version history**](CHANGELOG.md)
 
-**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.2.0 (build 2) passed all 13 tests on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
+**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.2.1 (build 3) passed all 14 tests on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
 
 ## Extract your first NEF
 
 1. Open `RawBridge.xcodeproj` in Xcode, select the **RawBridge** scheme and run on an iPhone or iPad. Grant access to a photo that has a RAW original. Tap **Refresh library** to scan for the first time.
-2. Open a photo in the **JPEG + RAW** group. Its resource list shows the original filenames and content types. For a Nikon pair, look for a `.NEF` entry alongside the `.JPG`.
+2. Find the photo by its RAW filename and extension (such as `.NEF`) in the **JPEG + RAW** group. Open it to see each original filename and format. For a Nikon pair, look for a `.NEF` entry alongside the `.JPG`.
 3. Tap **Export → RAW → Save to Files** and choose a folder. Choose **RAW + JPEG** to save both originals. The system picker offers local storage, iCloud Drive and mounted drives according to what is available on the device.
 4. To check a real import, open **Settings → Verify integrity**. Select the original on the camera card, then the file in the destination folder. RawBridge compares their byte counts and SHA-256 digests. [On-device test procedure](docs/device-tests.md)
 

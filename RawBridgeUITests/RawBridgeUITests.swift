@@ -46,11 +46,14 @@ final class RawBridgeUITests: XCTestCase {
         let tile = app.buttons["libraryTile-jpegRAW"].firstMatch
         try XCTSkipUnless(tile.waitForExistence(timeout: 5), "Install the optional Nikon pair.")
         XCTAssertFalse(solo.exists)
+        XCTAssertTrue(tile.label.localizedCaseInsensitiveContains(".NEF"), tile.label)
+        XCTAssertFalse(tile.label.localizedCaseInsensitiveContains(".JPG"), tile.label)
         tile.tap()
-        let rawPreview = app.buttons["RAW"]
+        let rawPreview = app.buttons[".NEF"]
         XCTAssertTrue(rawPreview.waitForExistence(timeout: 8))
         rawPreview.tap()
-        XCTAssertTrue(app.staticTexts["iss030e122639.NEF"].firstMatch.waitForExistence(timeout: 8))
+        let rawFilename = app.staticTexts.matching(NSPredicate(format: "label ENDSWITH[c] %@", ".nef")).firstMatch
+        XCTAssertTrue(rawFilename.waitForExistence(timeout: 8))
         if UIDevice.current.userInterfaceIdiom == .pad { XCUIDevice.shared.orientation = .landscapeLeft }
         defer { XCUIDevice.shared.orientation = .portrait }
         app.buttons["Export"].tap()

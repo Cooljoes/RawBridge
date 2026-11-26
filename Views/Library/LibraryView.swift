@@ -161,12 +161,12 @@ struct LibraryView: View {
             AssetThumbnail(asset: item.asset)
                 .clipShape(RoundedRectangle(cornerRadius: 9))
                 .overlay(alignment: .bottomLeading) {
-                    if let ext = item.record.rawExtension {
-                        Text(verbatim: ext).font(.caption2.bold()).foregroundStyle(.white)
+                    if let badge = item.record.formatBadge {
+                        Text(verbatim: badge).font(.caption2.bold()).foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 3).background(.black.opacity(0.72), in: Capsule()).padding(6)
                     }
                 }
-            Text(verbatim: item.record.title).font(.subheadline).lineLimit(1)
+            Text(verbatim: item.record.displayFilename).font(.subheadline).lineLimit(1).truncationMode(.middle)
             if let date = item.asset.creationDate { Text(date, style: .date).font(.caption).foregroundStyle(.secondary) }
         }
     }
