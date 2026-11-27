@@ -37,7 +37,8 @@ final class RawBridgeUITests: XCTestCase {
             return
         }
         picker.tap()
-        app.buttons["RAW only"].tap()
+        XCTAssertTrue(app.buttons["JPEG"].exists)
+        app.buttons["RAW"].tap()
         let solo = app.buttons["libraryTile-raw"].firstMatch
         try XCTSkipUnless(solo.waitForExistence(timeout: 5), "Install the optional standalone Nikon fixture.")
         XCTAssertFalse(app.buttons["libraryTile-jpegRAW"].firstMatch.exists)

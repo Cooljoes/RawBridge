@@ -331,13 +331,13 @@
         }
       }
     },
-    "JPEG only": {
+    "JPEG": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "仅 JPEG"
+            "value": "JPEG"
           }
         }
       }
@@ -584,13 +584,13 @@
         }
       }
     },
-    "RAW only": {
+    "RAW": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "仅 RAW"
+            "value": "RAW"
           }
         }
       }

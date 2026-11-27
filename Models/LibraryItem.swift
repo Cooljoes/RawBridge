@@ -13,12 +13,7 @@ enum LibraryFormat: String, Codable, CaseIterable, Identifiable {
     var id: Self { self }
 
     var titleKey: String {
-        switch self {
-        case .raw: return "RAW only"
-        case .jpeg: return "JPEG only"
-        case .heif: return "HEIF only"
-        default: return rawValue
-        }
+        self == .heif ? "HEIF only" : rawValue
     }
 
     init(formats: Set<PhotoFormat>, isProRAW: Bool = false) {
