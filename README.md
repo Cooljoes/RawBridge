@@ -16,7 +16,7 @@ A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If 
 
 [**Version history**](CHANGELOG.md)
 
-**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.2.1 (build 3) passed all 14 tests on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
+**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.2.2 (build 4) passed all 14 tests on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
 
 ## Extract your first NEF
 
@@ -33,7 +33,7 @@ A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If 
 | Detail | Inspect each resource's filename, role, UTI and size when available. Switch between originals to see their previews and available camera, lens and exposure data. A RAW decoder failure leaves extraction available. |
 | Batch export | Select RAW, JPEG or both. The paired mode requires both originals and reports how many photos lack the requested resources. A HEIF + RAW asset supports RAW-only export. |
 | Progress and retry | Follow the active file and completed count, cancel a batch or retry unfinished files. For duplicate filenames, keep both with a numbered suffix or report the conflict. |
-| iCloud and sharing | Downloads are off by default. Enable **Allow iCloud downloads** for cloud-only originals and follow progress when Photos reports it. **Prepare for sharing → Share** hands the staged files to the system share sheet. |
+| iCloud and sharing | Downloads are off by default. Enable **Allow iCloud downloads** for cloud-only originals and follow progress when Photos reports it. Tap **Share** once to open the system share sheet immediately. Each selected original is delivered with its filename after extraction and checksum verification. |
 
 ## Architecture
 

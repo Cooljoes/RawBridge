@@ -33,6 +33,7 @@
 		CAFC9463959DDC6D559C4C8D /* LibraryViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C18204E79034442F97EB7A02 /* LibraryViewModel.swift */; };
 		CFCE8738D4DC5D384D9B000B /* PhotoResource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DC71B60403BB81BB04583E0 /* PhotoResource.swift */; };
 		E463655DD1A93E7B175A7799 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0855AAA19266445555E0AE /* ExportView.swift */; };
+		EC877457664639609107403B /* ShareFileProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A47C7A5922D921530922A9 /* ShareFileProvider.swift */; };
 		F3EC6BDA9893068C57489C74 /* RawBridgeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDE2ABAAFA93F2BA1DE94DF8 /* RawBridgeUITests.swift */; };
 		F6FC95AA0042FDFF2093C0E2 /* PhotoAsset.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBC124DFC7413EAA85F78C96 /* PhotoAsset.swift */; };
 /* End PBXBuildFile section */
@@ -80,6 +81,7 @@
 		AF7B750C0737FE7FF9460828 /* RAWExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAWExtractionService.swift; sourceTree = "<group>"; };
 		BA83BD1AF1596B0BCD7F82D2 /* MetadataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataService.swift; sourceTree = "<group>"; };
 		C18204E79034442F97EB7A02 /* LibraryViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryViewModel.swift; sourceTree = "<group>"; };
+		C2A47C7A5922D921530922A9 /* ShareFileProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareFileProvider.swift; sourceTree = "<group>"; };
 		C54F326EA3F9D99735123570 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		CD1B653CD873FE41DD0ACD42 /* RawBridgeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = RawBridgeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF0855AAA19266445555E0AE /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
@@ -125,6 +127,7 @@
 				0E8A62089B392C57B6D5F8E8 /* PreviewService.swift */,
 				A293A11EF4ACEF53CEB8DA19 /* RAWDetectionService.swift */,
 				AF7B750C0737FE7FF9460828 /* RAWExtractionService.swift */,
+				C2A47C7A5922D921530922A9 /* ShareFileProvider.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -381,6 +384,7 @@
 				B7D00B1BD57B54B756F7173A /* RawBridgeApp.swift in Sources */,
 				11611C65796BE579CF3990F6 /* ResourceView.swift in Sources */,
 				C1B32B77D02CC7B03FE513E5 /* SettingsView.swift in Sources */,
+				EC877457664639609107403B /* ShareFileProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -509,7 +513,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -522,7 +526,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.2.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -587,7 +591,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -606,7 +610,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.2.1;
+				MARKETING_VERSION = 0.2.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

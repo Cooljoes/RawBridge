@@ -186,6 +186,44 @@ final class PairedResourceTests: XCTestCase {
         XCTAssertEqual(try FileIntegrity.read(output), original)
         let jpg = try await RAWExtractionService.extract(rendered, network: false)
         XCTAssertEqual(jpg.fingerprint, try FileIntegrity.read(jpeg))
+        let sharing = ExportViewModel()
+        sharing.plan([item], mode: .both)
+        sharing.start(folder: nil, network: false, policy: .keepBoth)
+        let cancelledItem = try XCTUnwrap(sharing.shareProviders().first)
+        sharing.cancel()
+        let cancelledDelivery = expectation(description: "Cancelled extraction resolves its file request")
+        cancelledItem.loadFileRepresentation(forTypeIdentifier: try XCTUnwrap(cancelledItem.registeredTypeIdentifiers.first)) { url, error in
+            XCTAssertNil(url)
+            XCTAssertNotNil(error)
+            cancelledDelivery.fulfill()
+        }
+        await fulfillment(of: [cancelledDelivery], timeout: 10)
+        XCTAssertEqual(sharing.finished, 0)
+        sharing.resume(network: false, policy: .keepBoth)
+        let providers = sharing.shareProviders()
+        XCTAssertTrue(sharing.running)
+        XCTAssertEqual(sharing.finished, 0, "The share sheet must receive its items before extraction finishes")
+        XCTAssertEqual(Set(providers.compactMap(\.suggestedName)), [raw.filename, rendered.filename])
+        XCTAssertEqual(providers.count, 2)
+        let delivered = providers.map { provider in
+            let expectation = expectation(description: "Receive " + (provider.suggestedName ?? "original"))
+            let isRAW = provider.suggestedName == raw.filename
+            let type = isRAW ? raw.uti : rendered.uti
+            let expectedFingerprint = isRAW ? original : jpg.fingerprint
+            XCTAssertTrue(provider.hasItemConformingToTypeIdentifier(type))
+            provider.loadFileRepresentation(forTypeIdentifier: type) { url, error in
+                defer { expectation.fulfill() }
+                XCTAssertNil(error)
+                do {
+                    let copy = try XCTUnwrap(url)
+                    XCTAssertEqual(try FileIntegrity.read(copy), expectedFingerprint)
+                } catch { XCTFail(error.localizedDescription) }
+            }
+            return expectation
+        }
+        await fulfillment(of: delivered, timeout: 30)
+        XCTAssertEqual(sharing.finished, 2)
+
         let camera = MetadataService.read(file.url)
         XCTAssertTrue(camera.make?.localizedCaseInsensitiveContains("Nikon") == true)
         XCTAssertNotNil(camera.model)

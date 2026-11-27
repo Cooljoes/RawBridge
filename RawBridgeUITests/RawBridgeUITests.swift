@@ -67,20 +67,18 @@ final class RawBridgeUITests: XCTestCase {
             return
         }
         closePicker.tap()
-        let prepare = app.buttons["Prepare for sharing"]
+        let share = app.buttons["Share"]
         let pickerDismissed = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            !closePicker.exists && prepare.isHittable
+            !closePicker.exists && share.isHittable
         }, object: nil)
         guard XCTWaiter.wait(for: [pickerDismissed], timeout: 20) == .completed else {
             XCTFail("The Files picker did not return control to the export sheet.")
             return
         }
-        prepare.tap()
-        let share = app.buttons["Share"]
-        XCTAssertTrue(share.waitForExistence(timeout: 15))
         share.tap()
+        // "Save to Files" also exists on the underlying export view.
         let activity = app.descendants(matching: .any).matching(NSPredicate(
-            format: "label == %@ OR label == %@ OR identifier == %@", "Save to Files", "AirDrop", "ActivityListView")).firstMatch
+            format: "label == %@ OR identifier == %@", "AirDrop", "ActivityListView")).firstMatch
         XCTAssertTrue(activity.waitForExistence(timeout: 30))
     }
 }

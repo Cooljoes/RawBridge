@@ -10,7 +10,8 @@ struct ExportView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var mode = ExportMode.raw
     @State private var chooseFolder = false
-    @State private var share = false
+    @State private var share: ShareRequest?
+    @State private var shareCompleted = false
     @State private var message: String?
 
     var body: some View {
@@ -31,7 +32,7 @@ struct ExportView: View {
                     }
                     if !model.started {
                         Button { chooseFolder = true } label: { Label("Save to Files", systemImage: "folder") }.disabled(model.jobs.isEmpty)
-                        Button { model.start(folder: nil, network: network, policy: collision) } label: { Label("Prepare for sharing", systemImage: "square.and.arrow.up") }.disabled(model.jobs.isEmpty)
+                        Button { openShare() } label: { Label("Share", systemImage: "square.and.arrow.up") }.disabled(model.jobs.isEmpty)
                     }
                 }.disabled(model.jobs.isEmpty && model.started)
                 if model.started {
@@ -45,8 +46,15 @@ struct ExportView: View {
                             Button(model.stopping ? "Cancelling…" : "Cancel extraction", role: .destructive) { model.cancel() }
                                 .disabled(model.stopping)
                         } else {
-                            if model.remaining > 0 { Button("Retry remaining files") { model.resume(network: network, policy: collision) } }
-                            if !model.shareURLs.isEmpty { Button("Share") { share = true } }
+                            if model.remaining > 0 {
+                                Button("Retry remaining files") {
+                                    if model.forSharing { openShare() }
+                                    else { model.resume(network: network, policy: collision) }
+                                }
+                            }
+                            if model.forSharing && model.finished > 0 {
+                                Button(model.remaining > 0 ? "Share completed files" : "Share") { openShare(readyOnly: true) }
+                            }
                         }
                     }
                     ForEach(model.jobs) { job in
@@ -72,20 +80,56 @@ struct ExportView: View {
             model.plan(items, mode: mode)
         } }
         .onChange(of: mode) { _, value in model.plan(items, mode: value) }
-        .onDisappear { if model.running { model.cancel() } }
+        .onDisappear { if share == nil && model.running { model.cancel() } }
         .fileImporter(isPresented: $chooseFolder, allowedContentTypes: [.folder]) { result in
             do { model.start(folder: try result.get(), network: network, policy: collision) }
             catch let error as NSError where error.code == NSUserCancelledError { }
             catch { message = error.localizedDescription }
         }
-        .sheet(isPresented: $share) { ShareFiles(urls: model.shareURLs) }
+        .sheet(item: $share, onDismiss: {
+            if !shareCompleted && model.running { model.cancel() }
+        }) { request in
+            ShareFiles(providers: request.providers) { completed, error in
+                shareCompleted = completed
+                if let error { message = error.localizedDescription }
+                share = nil
+            }
+        }
+    }
+
+    private func openShare(readyOnly: Bool = false) {
+        guard share == nil else { return }
+        if !model.started {
+            model.start(folder: nil, network: network, policy: collision)
+        } else if !readyOnly {
+            model.resume(network: network, policy: collision)
+        }
+        shareCompleted = false
+        message = nil
+        share = ShareRequest(providers: model.shareProviders(readyOnly: readyOnly))
     }
 }
 
+private struct ShareRequest: Identifiable {
+    let id = UUID()
+    let providers: [NSItemProvider]
+}
+
 private struct ShareFiles: UIViewControllerRepresentable {
-    let urls: [URL]
+    let providers: [NSItemProvider]
+    let onFinish: @MainActor (Bool, Error?) -> Void
+
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: urls, applicationActivities: nil)
+        let configuration = UIActivityItemsConfiguration(itemProviders: providers)
+        configuration.perItemMetadataProvider = { index, key in
+            guard key == .title, providers.indices.contains(index) else { return nil }
+            return providers[index].suggestedName
+        }
+        let controller = UIActivityViewController(activityItemsConfiguration: configuration)
+        controller.completionWithItemsHandler = { _, completed, _, error in
+            onFinish(completed, error)
+        }
+        return controller
     }
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

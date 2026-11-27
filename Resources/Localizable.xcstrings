@@ -551,17 +551,6 @@
         }
       }
     },
-    "Prepare for sharing": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "准备分享文件"
-          }
-        }
-      }
-    },
     "Prepared for sharing": {
       "extractionState": "manual",
       "localizations": {
@@ -789,6 +778,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "分享"
+          }
+        }
+      }
+    },
+    "Share completed files": {
+      "extractionState": "manual",
+      "localizations": {
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "分享已完成的文件"
           }
         }
       }

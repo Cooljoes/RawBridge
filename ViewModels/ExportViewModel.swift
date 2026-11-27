@@ -13,10 +13,34 @@ final class ExportViewModel: ObservableObject {
     private var folder: URL?
     private var progressID: UUID?
 
-    var shareURLs: [URL] { jobs.compactMap { $0.sharingFile?.url } }
     var finished: Int { jobs.filter { $0.receipt != nil }.count }
     var remaining: Int { jobs.count - finished }
     var forSharing: Bool { started && folder == nil }
+
+    func shareProviders(readyOnly: Bool = false) -> [NSItemProvider] {
+        jobs.enumerated().compactMap { index, job in
+            guard !readyOnly || job.sharingFile != nil else { return nil }
+            return ShareFileProvider.make(for: job.resource) { [self] in
+                try await fileForSharing(at: index, id: job.id)
+            }
+        }
+    }
+
+    private func fileForSharing(at index: Int, id: UUID) async throws -> ExtractedFile {
+        for await (current, isRunning) in $jobs.combineLatest($running).values {
+            try Task.checkCancellation()
+            guard current.indices.contains(index), current[index].id == id else { throw CancellationError() }
+            let job = current[index]
+            if let file = job.sharingFile { return file }
+            if !isRunning {
+                if let reason = job.error {
+                    throw CocoaError(.fileReadUnknown, userInfo: [NSLocalizedDescriptionKey: reason])
+                }
+                throw CancellationError()
+            }
+        }
+        throw CancellationError()
+    }
 
     func plan(_ items: [PhotoAsset], mode: ExportMode) {
         guard !running else { return }
@@ -51,7 +75,7 @@ final class ExportViewModel: ObservableObject {
                 jobs[index].error = nil
                 do {
                     let file = try await RAWExtractionService.extract(resource, network: network,
-                                        interruptible: network || jobs.count > 1) { fraction in
+                                        interruptible: forSharing || network || jobs.count > 1) { fraction in
                         Task { @MainActor in
                             guard self.progressID == id else { return }
                             self.progress = min(1, max(0, fraction))
