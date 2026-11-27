@@ -22,6 +22,14 @@ final class RawBridgeUITests: XCTestCase {
     }
 
     func testCollapseAndExpandIndexedFormat() throws {
+        let device = XCUIDevice.shared
+        let originalOrientation = device.orientation
+        if UIDevice.current.userInterfaceIdiom == .pad { device.orientation = .portrait }
+        defer {
+            if UIDevice.current.userInterfaceIdiom == .pad && originalOrientation.isValidInterfaceOrientation {
+                device.orientation = originalOrientation
+            }
+        }
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
@@ -81,6 +89,43 @@ final class RawBridgeUITests: XCTestCase {
         second.coordinate(withNormalizedOffset: CGVector(dx: 0.04, dy: 0.94)).tap()
         XCTAssertTrue(refresh.exists)
         XCTAssertTrue(tiles.waitForNonExistence(timeout: 5))
+    }
+
+    func testPullToRefreshSettlesWithExpandedAndCollapsedGroups() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let refresh = app.buttons["refreshLibrary"]
+        try XCTSkipUnless(refresh.waitForExistence(timeout: 8), "Requires existing Photos access.")
+        let header = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "formatSection-")).firstMatch
+        if !header.waitForExistence(timeout: 3) {
+            refresh.tap()
+            XCTAssertTrue(header.waitForExistence(timeout: 30))
+        }
+        let scroll = app.scrollViews.firstMatch
+        func pullAndCheckReturn() {
+            let restingY = header.frame.minY
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.27))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.55, dy: 0.84))
+            start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.25)
+            let returned = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                refresh.isEnabled && abs(header.frame.minY - restingY) <= 4
+            }, object: nil)
+            XCTAssertEqual(XCTWaiter.wait(for: [returned], timeout: 8), .completed,
+                           "The first format header stayed displaced after release")
+        }
+        pullAndCheckReturn()
+        let name = String(header.identifier.dropFirst("formatSection-".count))
+        let picker = app.buttons["formatPicker"]
+        if picker.exists {
+            picker.tap()
+            app.buttons[name].tap()
+        }
+        header.tap()
+        let tile = app.buttons["libraryTile-" + name].firstMatch
+        XCTAssertTrue(tile.waitForNonExistence(timeout: 5))
+        pullAndCheckReturn()
+        pullAndCheckReturn()
+        XCTAssertFalse(tile.exists, "Refreshing reopened a collapsed group")
     }
 
     func testNikonPairDetailAndExportOptionsWhenFixtureIsInstalled() throws {

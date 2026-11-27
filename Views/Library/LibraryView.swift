@@ -3,6 +3,8 @@ import PhotosUI
 
 struct LibraryView: View {
     @ObservedObject var library: LibraryViewModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.scenePhase) private var phase
     @State private var format: LibraryFormat?
     @State private var expandedFormats: [LibraryFormat: Bool] = [:]
@@ -38,7 +40,7 @@ struct LibraryView: View {
                 ToolbarItem(placement: .topBarLeading) { Button { settings = true } label: { Label("Settings", systemImage: "gearshape") } }
                 if library.access == .authorized || library.access == .limited {
                     ToolbarItemGroup(placement: .topBarTrailing) {
-                        Button { Task { await library.refresh() } } label: {
+                        Button(action: library.requestRefresh) {
                             Label("Refresh library", systemImage: "arrow.clockwise")
                         }.accessibilityIdentifier("refreshLibrary").disabled(library.scanning || library.restoring)
                         Menu {
@@ -98,17 +100,18 @@ struct LibraryView: View {
                         }
                     }.pickerStyle(.menu).accessibilityIdentifier("formatPicker")
                 }
-                if library.scanning {
-                    ProgressView(value: Double(library.scanned), total: Double(max(1, library.total))) {
-                        Text("Refreshing library…")
-                    }.accessibilityIdentifier("scanProgress")
-                } else if library.restoring {
+                if library.restoring {
                     ProgressView("Opening saved list…")
                 } else if !library.hasSnapshot {
                     ContentUnavailableView {
                         Label("Refresh your library", systemImage: "photo.stack")
-                    } description: { Text("Refresh to group the 100 most recently added photos by format.") }
-                        actions: { Button("Refresh library") { Task { await library.refresh() } }.buttonStyle(.borderedProminent) }
+                    } description: {
+                        Text("Refresh to group the 100 most recently added photos by format.")
+                    } actions: {
+                        Button("Refresh library", action: library.requestRefresh)
+                            .buttonStyle(.borderedProminent)
+                            .disabled(library.scanning)
+                    }
                 } else if visible.isEmpty {
                     ContentUnavailableView("No matching photos", systemImage: "photo.stack")
                 }
@@ -119,13 +122,16 @@ struct LibraryView: View {
                     let expanded = expandedFormats[category] ?? (category == categories.first)
                     Divider()
                     Button {
-                        expandedFormats[category] = !expanded
+                        withAnimation(reduceMotion ? nil : .smooth(duration: 0.28)) {
+                            expandedFormats[category] = !expanded
+                        }
                     } label: {
                         HStack {
                             Text(LocalizedStringKey(category.title)).font(.headline)
                             Spacer()
                             Text(entries.count.formatted()).monospacedDigit().foregroundStyle(.secondary)
-                            Image(systemName: expanded ? "chevron.down" : "chevron.forward")
+                            Image(systemName: "chevron.forward")
+                                .rotationEffect(.degrees(expanded ? (layoutDirection == .rightToLeft ? -90 : 90) : 0))
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.secondary)
                                 .accessibilityHidden(true)
@@ -139,6 +145,8 @@ struct LibraryView: View {
                     .accessibilityIdentifier("formatSection-" + category.title)
                     if expanded {
                         photoGrid(newest ? entries : Array(entries.reversed()), category: category)
+                            .clipped()
+                            .transition(.opacity.combined(with: .offset(y: -6)))
                     }
                 }
             }.padding()
@@ -146,7 +154,17 @@ struct LibraryView: View {
         .onChange(of: available) { _, values in
             if let format, !values.contains(format) { self.format = nil }
         }
-        .refreshable { await library.refresh() }
+        .scrollBounceBehavior(.always, axes: .vertical)
+        .refreshable { library.requestRefresh() }
+        .overlay(alignment: .top) {
+            if library.scanning {
+                ProgressView(value: Double(library.scanned), total: Double(max(1, library.total)))
+                    .progressViewStyle(.linear)
+                    .accessibilityLabel("Refreshing library…")
+                    .accessibilityIdentifier("scanProgress")
+                    .allowsHitTesting(false)
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             if selecting {
                 HStack {

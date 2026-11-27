@@ -111,6 +111,11 @@ final class LibraryViewModel: ObservableObject {
         await persist(visible, token: token)
     }
 
+    /// Let the pull gesture settle while the model scans and reports progress independently.
+    func requestRefresh() {
+        Task { await refresh() }
+    }
+
     func refresh() async {
         await synchronizeAccess()
         guard access == .authorized || access == .limited, !scanning, !restoring else { return }
