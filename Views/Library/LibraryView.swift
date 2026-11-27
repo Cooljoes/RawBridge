@@ -41,7 +41,7 @@ struct LibraryView: View {
                             Label("Refresh library", systemImage: "arrow.clockwise")
                         }.accessibilityIdentifier("refreshLibrary").disabled(library.scanning || library.restoring)
                         Menu {
-                            Toggle("Newest first", isOn: $newest)
+                            Toggle("Recently added first", isOn: $newest)
                             Picker("Camera", selection: $brand) {
                                 Text("All cameras").tag("All cameras")
                                 ForEach(library.brands, id: \.self) { Text(verbatim: $0).tag($0) }
@@ -101,7 +101,7 @@ struct LibraryView: View {
                 } else if !library.hasSnapshot {
                     ContentUnavailableView {
                         Label("Refresh your library", systemImage: "photo.stack")
-                    } description: { Text("Tap Refresh to find originals and group your photos by format.") }
+                    } description: { Text("Refresh to group the 100 most recently added photos by format.") }
                         actions: { Button("Refresh library") { Task { await library.refresh() } }.buttonStyle(.borderedProminent) }
                 } else if visible.isEmpty {
                     ContentUnavailableView("No matching photos", systemImage: "photo.stack")

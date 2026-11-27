@@ -1,10 +1,66 @@
 import XCTest
+import UIKit
 import Photos
 import ImageIO
 import UniformTypeIdentifiers
 @testable import RawBridge
 
 final class PairedResourceTests: XCTestCase {
+    func testCurrentImportWindowReadOnly() async throws {
+        let access = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        try XCTSkipUnless(access == .authorized || access == .limited, "Requires existing Photos access.")
+        let items = try await PhotoLibraryService().scan { _, _ in }
+        XCTAssertLessThanOrEqual(items.count, 100)
+        XCTAssertEqual(Set(items.map(\.id)).count, items.count)
+        if #available(iOS 26, *) {
+            let dates = items.compactMap { $0.asset.addedDate }
+            XCTAssertEqual(dates, dates.sorted(by: >))
+        }
+        print("Read-only recent import scan: \(items.count) photos.")
+    }
+
+    @MainActor
+    func testImportWindowUsesDateAddedBeforeLimit() async throws {
+        #if targetEnvironment(simulator)
+        guard #available(iOS 26, *) else { throw XCTSkip("Requires per-asset import dates.") }
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4))
+        let jpeg = renderer.jpegData(withCompressionQuality: 0.6) { context in
+            UIColor.gray.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }
+        func add(_ count: Int, taken: Date) async throws -> [String] {
+            var ids: [String] = []
+            try await PHPhotoLibrary.shared().performChanges {
+                for _ in 0..<count {
+                    let request = PHAssetCreationRequest.forAsset()
+                    request.creationDate = taken
+                    request.addResource(with: .photo, data: jpeg, options: nil)
+                    if let id = request.placeholderForCreatedAsset?.localIdentifier { ids.append(id) }
+                }
+            }
+            XCTAssertEqual(ids.count, count)
+            return ids
+        }
+        let recentCapture = Date()
+        let oldImport = try await add(1, taken: recentCapture)
+        try await Task.sleep(for: .seconds(1.1))
+        let middle = try await add(99, taken: recentCapture.addingTimeInterval(-86400))
+        try await Task.sleep(for: .seconds(1.1))
+        let latest = try await add(1, taken: Date(timeIntervalSince1970: 0))
+        let rows = try await PhotoLibraryService().scan { done, total in
+            XCTAssertEqual(total, 100)
+            XCTAssertLessThanOrEqual(done, total)
+        }
+        let ids = rows.map(\.id)
+        XCTAssertEqual(ids.count, 100)
+        XCTAssertEqual(ids.first, latest.first)
+        XCTAssertEqual(Set(ids), Set(middle + latest))
+        XCTAssertFalse(ids.contains(try XCTUnwrap(oldImport.first)))
+        #else
+        throw XCTSkip("Only a simulator may create test photos.")
+        #endif
+    }
+
     @MainActor
     func testManualRefreshAndColdLaunchCache() async throws {
         #if targetEnvironment(simulator)
@@ -38,6 +94,13 @@ final class PairedResourceTests: XCTestCase {
         XCTAssertFalse(reopened.items.contains { $0.id == newID })
         await reopened.refresh()
         XCTAssertEqual(reopened.items.first { $0.id == newID }?.record.format, .jpeg)
+
+        // A full-library snapshot cannot be truncated in capture-date order.
+        try JSONEncoder().encode(first.items.map(\.record)).write(to: cache)
+        let legacy = LibraryViewModel(service: PhotoLibraryService(cacheURL: cache))
+        await legacy.synchronizeAccess()
+        XCTAssertFalse(legacy.hasSnapshot)
+        XCTAssertTrue(legacy.items.isEmpty)
 
         let emptyCache = PhotoLibraryService(cacheURL: cache)
         try await emptyCache.save([])

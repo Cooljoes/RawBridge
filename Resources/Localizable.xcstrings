@@ -397,13 +397,13 @@
         }
       }
     },
-    "Newest first": {
+    "Recently added first": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "最新拍摄优先"
+            "value": "最近加入优先"
           }
         }
       }
@@ -804,13 +804,13 @@
         }
       }
     },
-    "Tap Refresh to find originals and group your photos by format.": {
+    "Refresh to group the 100 most recently added photos by format.": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "点「刷新图库」读取原片，并按格式查看照片。"
+            "value": "刷新后按格式显示最近加入图库的 100 张照片。"
           }
         }
       }

@@ -16,11 +16,13 @@ A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If 
 
 [**Version history**](CHANGELOG.md)
 
-**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.2.3 (build 5) passed all 14 tests on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
+**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.3.0 (build 6) passed all 16 tests on each of the iPhone and iPad simulators. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
+
+On iOS and iPadOS 26 or later, the scan uses the time each photo was added to Photos. On earlier versions it uses the system’s Recently Added album, which may contain fewer than 100 photos. After upgrading from a full-library index, tap Refresh once to build the new list.
 
 ## Extract your first NEF
 
-1. Open `RawBridge.xcodeproj` in Xcode, select the **RawBridge** scheme and run on an iPhone or iPad. Grant access to a photo that has a RAW original. Tap **Refresh library** to scan for the first time.
+1. Open `RawBridge.xcodeproj` in Xcode, select the **RawBridge** scheme and run on an iPhone or iPad. Grant access to a photo that has a RAW original. Tap **Refresh library** to group the 100 most recently added photos you can access. A JPEG + RAW pair counts as one photo.
 2. Find the photo by its RAW filename and extension (such as `.NEF`) in the **JPEG + RAW** group. Open it to see each original filename and format. For a Nikon pair, look for a `.NEF` entry alongside the `.JPG`.
 3. Tap **Export → RAW → Save to Files** and choose a folder. Choose **RAW + JPEG** to save both originals. The system picker offers local storage, iCloud Drive and mounted drives according to what is available on the device.
 4. To check a real import, open **Settings → Verify integrity**. Select the original on the camera card, then the file in the destination folder. RawBridge compares their byte counts and SHA-256 digests. [On-device test procedure](docs/device-tests.md)
@@ -29,7 +31,7 @@ A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If 
 
 | Area | What you can do |
 | --- | --- |
-| Library | Open the last refreshed list, or use the refresh button or pull down to find new photos. Browse separate JPEG + RAW, RAW, HEIF + RAW, Apple ProRAW, JPEG, HEIF only and other groups. Filter by format or camera brand, and sort by capture date within each group. **Read camera brands** fills in brands from available local metadata for formats such as DNG and JPEG. **Select all** selects the filtered results. |
+| Library | Open the last refreshed list, or use the refresh button or pull down to find new photos. Browse separate JPEG + RAW, RAW, HEIF + RAW, Apple ProRAW, JPEG, HEIF only and other groups. Filter by format or camera brand, and reverse the import order within each group. **Read camera brands** fills in brands from available local metadata for formats such as DNG and JPEG. **Select all** selects the filtered results. |
 | Detail | Inspect each resource's filename, role, UTI and size when available. Switch between originals to see their previews and available camera, lens and exposure data. A RAW decoder failure leaves extraction available. |
 | Batch export | Select RAW, JPEG or both. The paired mode requires both originals and reports how many photos lack the requested resources. A HEIF + RAW asset supports RAW-only export. |
 | Progress and retry | Follow the active file and completed count, cancel a batch or retry unfinished files. For duplicate filenames, keep both with a numbered suffix or report the conflict. |
