@@ -16,6 +16,8 @@ struct AssetThumbnail: View {
                 else { Image(systemName: "photo").foregroundStyle(.secondary) }
             }
             .clipped()
+            // The enclosing tile owns taps, including when scaledToFill overflows the crop.
+            .allowsHitTesting(false)
             .accessibilityHidden(true)
             .onAppear {
                 let id = UUID()

@@ -16,7 +16,7 @@ A Nikon exposure shot in RAW + JPEG can appear as a single photo on an iPad. If 
 
 [**Version history**](CHANGELOG.md)
 
-**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.4.0 (build 7) passed nine tests on a physical iPad mini, including collapsing and reopening a format group. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
+**Current milestone** · A PhotoKit integration test created one asset from a public Nikon NEF and a JPEG generated from it. The extracted NEF matched the 10,656,312-byte input by SHA-256. Version 0.4.1 (build 8) passed ten tests on an iPad mini, including taps near the edges of adjacent format headers. Importing from a Nikon camera over USB and comparing the exported NEF against the camera card is the next hardware check. [Build and test evidence](docs/validation.md)
 
 On iOS and iPadOS 26 or later, the scan uses the time each photo was added to Photos. On earlier versions it uses the system’s Recently Added album, which may contain fewer than 100 photos. After upgrading from a full-library index, tap Refresh once to build the new list.
 

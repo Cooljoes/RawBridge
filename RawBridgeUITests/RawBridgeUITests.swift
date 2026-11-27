@@ -23,22 +23,64 @@ final class RawBridgeUITests: XCTestCase {
 
     func testCollapseAndExpandIndexedFormat() throws {
         let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         app.launch()
         let refresh = app.buttons["refreshLibrary"]
         try XCTSkipUnless(refresh.waitForExistence(timeout: 8), "Requires existing Photos access.")
         refresh.tap()
         let tiles = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "libraryTile-"))
-        let tile = tiles.firstMatch
-        XCTAssertTrue(tile.waitForExistence(timeout: 30))
-        let name = String(tile.identifier.dropFirst("libraryTile-".count))
-        let group = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label BEGINSWITH %@",
-                                                    "formatSection-" + name, name)).firstMatch
-        XCTAssertTrue(group.exists)
+        XCTAssertTrue(tiles.firstMatch.waitForExistence(timeout: 30))
+        let name = String(tiles.firstMatch.identifier.dropFirst("libraryTile-".count))
+        let group = app.buttons["formatSection-" + name].firstMatch
+        let tile = app.buttons["libraryTile-" + name].firstMatch
+        for x in [0.97, 0.5, 0.04] {
+            group.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.94)).tap()
+            XCTAssertTrue(tile.waitForNonExistence(timeout: 5))
+            XCTAssertTrue(refresh.exists, "A header tap opened a photo")
+            group.coordinate(withNormalizedOffset: CGVector(dx: x, dy: 0.06)).tap()
+            XCTAssertTrue(tile.waitForExistence(timeout: 5))
+        }
+        XCTAssertGreaterThanOrEqual(group.frame.height, 44)
+        app.buttons["Select"].tap()
+        let export = app.buttons["Export"]
+        XCTAssertFalse(export.isEnabled)
+        group.coordinate(withNormalizedOffset: CGVector(dx: 0.96, dy: 0.94)).tap()
+        XCTAssertFalse(export.isEnabled, "A header tap selected a photo")
+        XCTAssertTrue(refresh.exists)
         group.tap()
-        let firstInGroup = app.buttons["libraryTile-" + name].firstMatch
-        XCTAssertTrue(firstInGroup.waitForNonExistence(timeout: 5))
-        group.tap()
-        XCTAssertTrue(firstInGroup.waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
+        tile.tap()
+        XCTAssertTrue(app.navigationBars.buttons["Export"].waitForExistence(timeout: 10))
+    }
+
+    func testHeaderBelowExpandedPhotoGrid() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let refresh = app.buttons["refreshLibrary"]
+        try XCTSkipUnless(refresh.waitForExistence(timeout: 8), "Requires existing Photos access.")
+        refresh.tap()
+        let headers = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "formatSection-"))
+        let second = headers.element(boundBy: 1)
+        try XCTSkipUnless(second.waitForExistence(timeout: 15), "Requires two photo formats.")
+        let nextName = String(second.identifier.dropFirst("formatSection-".count))
+        let tiles = app.buttons["libraryTile-" + nextName].firstMatch
+        let scroll = app.scrollViews.firstMatch
+        // Bring the boundary below the preceding expanded grid into view.
+        for _ in 0..<25 {
+            let viewport = scroll.frame.intersection(app.frame).insetBy(dx: 0, dy: 60)
+            if viewport.contains(CGPoint(x: second.frame.midX, y: second.frame.midY)) { break }
+            let below = second.frame.midY > viewport.maxY
+            let start = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.8 : 0.3))
+            let end = scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: below ? 0.3 : 0.8))
+            start.press(forDuration: 0.08, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.1)
+        }
+        XCTAssertTrue(second.isHittable)
+        second.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.06)).tap()
+        XCTAssertTrue(refresh.exists, "The previous grid intercepted the next format header")
+        XCTAssertTrue(tiles.waitForExistence(timeout: 5))
+        second.coordinate(withNormalizedOffset: CGVector(dx: 0.04, dy: 0.94)).tap()
+        XCTAssertTrue(refresh.exists)
+        XCTAssertTrue(tiles.waitForNonExistence(timeout: 5))
     }
 
     func testNikonPairDetailAndExportOptionsWhenFixtureIsInstalled() throws {

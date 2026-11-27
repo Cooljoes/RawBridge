@@ -116,24 +116,30 @@ struct LibraryView: View {
                 if library.indexing { ProgressView("Reading camera brands…") }
                 ForEach(categories, id: \.self) { category in
                     let entries = groups[category] ?? []
+                    let expanded = expandedFormats[category] ?? (category == categories.first)
                     Divider()
-                    DisclosureGroup(isExpanded: Binding(
-                        get: { expandedFormats[category] ?? (category == categories.first) },
-                        set: { expandedFormats[category] = $0 }
-                    )) {
-                        photoGrid(newest ? entries : Array(entries.reversed()), category: category)
-                            .padding(.top, 8)
+                    Button {
+                        expandedFormats[category] = !expanded
                     } label: {
-                        HStack(alignment: .firstTextBaseline) {
+                        HStack {
                             Text(LocalizedStringKey(category.title)).font(.headline)
                             Spacer()
                             Text(entries.count.formatted()).monospacedDigit().foregroundStyle(.secondary)
+                            Image(systemName: expanded ? "chevron.down" : "chevron.forward")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .accessibilityHidden(true)
                         }
-                        .contentShape(Rectangle())
-                        .accessibilityElement(children: .combine)
-                        .accessibilityIdentifier("formatSection-" + category.title)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(.interaction, Rectangle())
                     }
-                    .tint(.primary)
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityValue(expanded ? Text("Expanded") : Text("Collapsed"))
+                    .accessibilityIdentifier("formatSection-" + category.title)
+                    if expanded {
+                        photoGrid(newest ? entries : Array(entries.reversed()), category: category)
+                    }
                 }
             }.padding()
         }
@@ -166,6 +172,7 @@ struct LibraryView: View {
                             Image(systemName: selected.contains(item.id) ? "checkmark.circle.fill" : "circle")
                                 .symbolRenderingMode(.palette).foregroundStyle(.white, .blue)
                                 .padding(7).shadow(radius: 2)
+                                .allowsHitTesting(false)
                         }
                     }.accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
                 } else {
@@ -190,11 +197,14 @@ struct LibraryView: View {
                     if let badge = item.record.formatBadge {
                         Text(verbatim: badge).font(.caption2.bold()).foregroundStyle(.white)
                             .padding(.horizontal, 6).padding(.vertical, 3).background(.black.opacity(0.72), in: Capsule()).padding(6)
+                            .allowsHitTesting(false)
                     }
                 }
             Text(verbatim: item.record.displayFilename).font(.subheadline).lineLimit(1).truncationMode(.middle)
             if let date = item.asset.creationDate { Text(date, style: .date).font(.caption).foregroundStyle(.secondary) }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(.interaction, Rectangle())
     }
 }
 
