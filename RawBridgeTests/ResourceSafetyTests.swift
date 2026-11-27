@@ -3,31 +3,40 @@ import UniformTypeIdentifiers
 @testable import RawBridge
 
 final class ResourceSafetyTests: XCTestCase {
-    func testOriginalFormatGroupsAreExclusive() {
-        XCTAssertEqual(LibraryFormat(formats: [.raw]), .raw)
-        XCTAssertEqual(LibraryFormat(formats: [.jpeg, .raw]), .jpegRAW)
-        XCTAssertEqual(LibraryFormat(formats: [.heif, .raw]), .heifRAW)
-        XCTAssertEqual(LibraryFormat(formats: [.raw], isProRAW: true), .proRAW)
-        XCTAssertEqual(LibraryFormat(formats: [.raw, .jpeg], isProRAW: true), .jpegRAW)
-        XCTAssertEqual(LibraryFormat(formats: [.jpeg]), .jpeg)
-        XCTAssertEqual(LibraryFormat(formats: [.heif]), .heif)
-        for formats: Set<PhotoFormat> in [[], [.other], [.raw, .other], [.raw, .jpeg, .heif]] {
-            XCTAssertEqual(LibraryFormat(formats: formats), .other)
+    func testConcreteOriginalFormatNames() {
+        func name(_ uti: String, _ filename: String) -> String? {
+            RAWDetectionService.name(uti: uti, filename: filename,
+                                     format: RAWDetectionService.format(uti: uti, filename: filename))
         }
+        XCTAssertEqual(name(UTType.png.identifier, "misleading.NEF"), "PNG")
+        XCTAssertEqual(name(UTType.jpeg.identifier, "frame.jpg"), "JPEG")
+        XCTAssertEqual(name(UTType.gif.identifier, ""), "GIF")
+        XCTAssertEqual(name(UTType.tiff.identifier, "scan.tif"), "TIFF")
+        XCTAssertEqual(name(UTType.heic.identifier, "frame.jpg"), "HEIC")
+        XCTAssertEqual(name(UTType.heif.identifier, "frame.heif"), "HEIF")
+        XCTAssertEqual(name(UTType.webP.identifier, "frame.webp"), "WEBP")
+        XCTAssertEqual(name(UTType.data.identifier, "camera.NEF"), "NEF")
+        XCTAssertEqual(name(UTType.rawImage.identifier, "camera.jpg"), "RAW")
+        XCTAssertEqual(name(UTType.data.identifier, "camera.cr3"), "CR3")
+        XCTAssertEqual(name(UTType.data.identifier, "frame.avif"), "AVIF")
+        XCTAssertNil(name(UTType.data.identifier, "untitled"))
     }
 
-    func testLegacyPairDisplaysTheCachedRAWExtension() throws {
-        let oldList = Data(#"""
-            [
-                {"id":"1","title":"preview.JPG","format":"JPEG + RAW","rawExtension":"NEF"},
-                {"id":"2","title":"preview.jpeg","format":"JPEG + RAW"},
-                {"id":"3","title":"frame.cr3","format":"JPEG + RAW","rawExtension":"CR3"},
-                {"id":"4","title":"frame.JPG","format":"JPEG"}
-            ]
-            """#.utf8)
-        let records = try JSONDecoder().decode([LibraryRecord].self, from: oldList)
-        XCTAssertEqual(records.map(\.displayFilename), ["preview", "preview", "frame.cr3", "frame.JPG"])
-        XCTAssertEqual(records.map(\.formatBadge), [".NEF", "RAW", ".CR3", nil])
+    func testLibraryFormatsUseStableNonemptyGroups() {
+        let pair = LibraryFormat(images: ["JPEG", "JPEG"], raw: ["NEF"])
+        let multi = LibraryFormat(images: ["TIFF", "JPEG"], raw: ["CR3"])
+        XCTAssertEqual(pair.title, "JPEG + NEF")
+        XCTAssertEqual(multi.title, "JPEG + TIFF + CR3")
+        let png = LibraryFormat(images: ["PNG"])
+        let jpeg = LibraryFormat(images: ["JPEG"])
+        let nef = LibraryFormat(raw: ["NEF"])
+        let missing = LibraryFormat()
+        let groups = Dictionary(grouping: [png, pair, jpeg, png, nef, missing]) { $0 }
+        XCTAssertEqual(groups.keys.sorted(), [pair, nef, jpeg, png, missing])
+        XCTAssertEqual(groups[png]?.count, 2)
+        XCTAssertEqual(missing.title, "Format unavailable")
+        XCTAssertTrue(LibraryFormat(raw: ["DNG"]).isDNG)
+        XCTAssertFalse(LibraryFormat(images: ["JPEG"], raw: ["DNG"]).isDNG)
     }
 
     func testCameraExtensionsAndUTIPrecedence() {

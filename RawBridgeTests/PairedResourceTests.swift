@@ -19,6 +19,25 @@ final class PairedResourceTests: XCTestCase {
         print("Read-only recent import scan: \(items.count) photos.")
     }
 
+    func testMigrateRecentImportGroupsReadOnly() async throws {
+        let access = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        try XCTSkipUnless(access == .authorized || access == .limited, "Requires Photos access.")
+        let current = try await PhotoLibraryService().scan { _, _ in }
+        try XCTSkipIf(current.isEmpty, "A library photo is required to check migration.")
+        let sample = Array(current.prefix(8).reversed())
+        let cache = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: cache) }
+        let legacy = sample.map { ["id": $0.id, "title": "old", "format":
+            $0.record.format == .proRAW ? "Apple ProRAW" : "Other formats"] }
+        try JSONEncoder().encode(["recentImports": legacy]).write(to: cache)
+        let service = PhotoLibraryService(cacheURL: cache)
+        for _ in 0..<2 {
+            let migrated = await service.restore()
+            XCTAssertEqual(migrated?.map(\.id), sample.map(\.id))
+            XCTAssertEqual(migrated?.map(\.record.format), sample.map(\.record.format))
+        }
+    }
+
     @MainActor
     func testImportWindowUsesDateAddedBeforeLimit() async throws {
         #if targetEnvironment(simulator)
@@ -93,7 +112,7 @@ final class PairedResourceTests: XCTestCase {
         XCTAssertEqual(reopened.items.map(\.id), originalIDs, "A cold or foreground launch must not discover new photos")
         XCTAssertFalse(reopened.items.contains { $0.id == newID })
         await reopened.refresh()
-        XCTAssertEqual(reopened.items.first { $0.id == newID }?.record.format, .jpeg)
+        XCTAssertEqual(reopened.items.first { $0.id == newID }?.record.format.title, "JPEG")
 
         // A full-library snapshot cannot be truncated in capture-date order.
         try JSONEncoder().encode(first.items.map(\.record)).write(to: cache)
@@ -136,7 +155,7 @@ final class PairedResourceTests: XCTestCase {
         let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(identifier)], options: nil).firstObject)
         let item = PhotoAsset(asset)
         XCTAssertEqual(item.formats, [.heif, .raw])
-        XCTAssertEqual(LibraryRecord(item).format, .heifRAW)
+        XCTAssertEqual(LibraryRecord(item).format.title, "HEIC + NEF")
         XCTAssertTrue(ExportMode.jpeg.resources(in: item).isEmpty)
         XCTAssertTrue(ExportMode.both.resources(in: item).isEmpty)
         let resource = try XCTUnwrap(ExportMode.raw.resources(in: item).first)
@@ -192,7 +211,7 @@ final class PairedResourceTests: XCTestCase {
             let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(identifier)], options: nil).firstObject)
             let item = PhotoAsset(asset)
             XCTAssertEqual(item.formats, [format])
-            XCTAssertEqual(LibraryRecord(item).format, format == .raw ? .raw : .jpeg)
+            XCTAssertEqual(LibraryRecord(item).format.title, format == .raw ? "NEF" : "JPEG")
             let resource = try XCTUnwrap(item.originals.first)
             let exported = try await RAWExtractionService.extract(resource, network: false)
             XCTAssertEqual(exported.fingerprint, try FileIntegrity.read(source))
@@ -227,9 +246,8 @@ final class PairedResourceTests: XCTestCase {
         }
         let asset = try XCTUnwrap(PHAsset.fetchAssets(withLocalIdentifiers: [try XCTUnwrap(assetID)], options: nil).firstObject)
         let item = PhotoAsset(asset)
-        XCTAssertEqual(item.label, "JPEG + RAW")
         let record = LibraryRecord(item)
-        XCTAssertEqual(record.format, .jpegRAW)
+        XCTAssertEqual(record.format.title, "JPEG + NEF")
         XCTAssertEqual(record.formatBadge, ".NEF")
         let raw = try XCTUnwrap(item.originals.first { $0.format == .raw })
         let rendered = try XCTUnwrap(item.originals.first { $0.format == .jpeg })

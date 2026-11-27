@@ -21,6 +21,26 @@ final class RawBridgeUITests: XCTestCase {
         XCTAssertTrue(app.switches["允许从 iCloud 下载原片"].waitForExistence(timeout: 5))
     }
 
+    func testCollapseAndExpandIndexedFormat() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let refresh = app.buttons["refreshLibrary"]
+        try XCTSkipUnless(refresh.waitForExistence(timeout: 8), "Requires existing Photos access.")
+        refresh.tap()
+        let tiles = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "libraryTile-"))
+        let tile = tiles.firstMatch
+        XCTAssertTrue(tile.waitForExistence(timeout: 30))
+        let name = String(tile.identifier.dropFirst("libraryTile-".count))
+        let group = app.buttons.matching(NSPredicate(format: "identifier == %@ OR label BEGINSWITH %@",
+                                                    "formatSection-" + name, name)).firstMatch
+        XCTAssertTrue(group.exists)
+        group.tap()
+        let firstInGroup = app.buttons["libraryTile-" + name].firstMatch
+        XCTAssertTrue(firstInGroup.waitForNonExistence(timeout: 5))
+        group.tap()
+        XCTAssertTrue(firstInGroup.waitForExistence(timeout: 5))
+    }
+
     func testNikonPairDetailAndExportOptionsWhenFixtureIsInstalled() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -38,13 +58,13 @@ final class RawBridgeUITests: XCTestCase {
         }
         picker.tap()
         XCTAssertTrue(app.buttons["JPEG"].exists)
-        app.buttons["RAW"].tap()
-        let solo = app.buttons["libraryTile-raw"].firstMatch
+        app.buttons["NEF"].tap()
+        let solo = app.buttons["libraryTile-NEF"].firstMatch
         try XCTSkipUnless(solo.waitForExistence(timeout: 5), "Install the optional standalone Nikon fixture.")
-        XCTAssertFalse(app.buttons["libraryTile-jpegRAW"].firstMatch.exists)
+        XCTAssertFalse(app.buttons["libraryTile-JPEG + NEF"].firstMatch.exists)
         picker.tap()
-        app.buttons["JPEG + RAW"].tap()
-        let tile = app.buttons["libraryTile-jpegRAW"].firstMatch
+        app.buttons["JPEG + NEF"].tap()
+        let tile = app.buttons["libraryTile-JPEG + NEF"].firstMatch
         try XCTSkipUnless(tile.waitForExistence(timeout: 5), "Install the optional Nikon pair.")
         XCTAssertFalse(solo.exists)
         XCTAssertTrue(tile.label.localizedCaseInsensitiveContains(".NEF"), tile.label)

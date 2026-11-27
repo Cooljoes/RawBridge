@@ -34,7 +34,7 @@ final class LibraryViewModel: ObservableObject {
 
     func record(_ metadata: CameraMetadata, for item: LibraryItem) {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else { return }
-        if metadata.isProRAW && items[index].record.format == .raw {
+        if metadata.isProRAW && items[index].record.format.isDNG {
             items[index].record.format = .proRAW
         }
         if let make = metadata.make {

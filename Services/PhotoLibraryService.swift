@@ -24,23 +24,39 @@ actor PhotoLibraryService {
     /// An empty array represents a completed refresh of an empty library.
     func restore() -> [LibraryItem]? {
         guard let data = try? Data(contentsOf: cacheURL, options: .mappedIfSafe),
-              // Older versions wrote a bare array from a full-library scan.
-              data.first == UInt8(ascii: "{"),
-              let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
-              snapshot.recentImports.count <= Self.importLimit else { return nil }
-        return authorizedItems(snapshot.recentImports)
+              data.first == UInt8(ascii: "{") else { return nil }
+        if let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
+           snapshot.recentImports.count <= Self.importLimit {
+            return authorizedItems(snapshot.recentImports)
+        }
+        // Reclassify only previously indexed, still-authorized assets from a 0.3 snapshot.
+        struct LegacySnapshot: Decodable {
+            struct Record: Decodable { let id: String; let format: String }
+            let recentImports: [Record]
+        }
+        guard let legacy = try? JSONDecoder().decode(LegacySnapshot.self, from: data),
+              legacy.recentImports.count <= Self.importLimit else { return nil }
+        let assets = authorizedAssets(ids: legacy.recentImports.map(\.id))
+        let items = legacy.recentImports.compactMap { previous -> LibraryItem? in
+            guard let asset = assets[previous.id] else { return nil }
+            var record = LibraryRecord(PhotoAsset(asset))
+            if record.format.isDNG && previous.format == "Apple ProRAW" { record.format = .proRAW }
+            return LibraryItem(asset: asset, record: record)
+        }
+        try? save(items.map(\.record))
+        return items
+    }
+
+    private func authorizedAssets(ids: [String]) -> [String: PHAsset] {
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)
+        var byID: [String: PHAsset] = [:]
+        assets.enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
+        return byID
     }
 
     func authorizedItems(_ records: [LibraryRecord]) -> [LibraryItem] {
-        var items: [LibraryItem] = []
-        for offset in stride(from: 0, to: records.count, by: 500) {
-            let page = records[offset..<min(records.count, offset + 500)]
-            let assets = PHAsset.fetchAssets(withLocalIdentifiers: page.map(\.id), options: nil)
-            var byID: [String: PHAsset] = [:]
-            assets.enumerateObjects { asset, _, _ in byID[asset.localIdentifier] = asset }
-            items += page.compactMap { record in byID[record.id].map { LibraryItem(asset: $0, record: record) } }
-        }
-        return items
+        let assets = authorizedAssets(ids: records.map(\.id))
+        return records.compactMap { record in assets[record.id].map { LibraryItem(asset: $0, record: record) } }
     }
 
     private func recentImages() -> [PHAsset] {
@@ -69,7 +85,7 @@ actor PhotoLibraryService {
         for asset in assets {
             try Task.checkCancellation()
             var record = autoreleasepool { LibraryRecord(PhotoAsset(asset)) }
-            if record.format == .raw, record.rawExtension == "DNG",
+            if record.format.isDNG,
                await MetadataService.localMetadata(asset)?.isProRAW == true {
                 record.format = .proRAW
             }

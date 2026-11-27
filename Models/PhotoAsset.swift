@@ -6,14 +6,10 @@ struct PhotoAsset: Identifiable {
     var id: String { asset.localIdentifier }
     let originals: [PhotoResource]
     let formats: Set<PhotoFormat>
-    var label: String {
-        let labels = [PhotoFormat.jpeg, .heif, .raw].filter(formats.contains).map(\.rawValue)
-        return labels.isEmpty ? "—" : labels.joined(separator: " + ")
-    }
     var rawOriginal: PhotoResource? { originals.first { $0.format == .raw } }
 
     var title: String {
-        if formats == [.jpeg, .raw], let raw = rawOriginal {
+        if let raw = rawOriginal {
             return raw.filename.nonEmpty ?? raw.displayFormat
         }
         return originals.first?.filename.nonEmpty ?? resources.first?.filename.nonEmpty ?? "—"

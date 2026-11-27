@@ -320,17 +320,6 @@
         }
       }
     },
-    "HEIF only": {
-      "extractionState": "manual",
-      "localizations": {
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "仅 HEIF"
-          }
-        }
-      }
-    },
     "JPEG": {
       "extractionState": "manual",
       "localizations": {
@@ -463,13 +452,13 @@
         }
       }
     },
-    "Other formats": {
+    "Format unavailable": {
       "extractionState": "manual",
       "localizations": {
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "其他格式"
+            "value": "未提供格式信息"
           }
         }
       }

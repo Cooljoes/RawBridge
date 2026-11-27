@@ -5,6 +5,7 @@ struct LibraryView: View {
     @ObservedObject var library: LibraryViewModel
     @Environment(\.scenePhase) private var phase
     @State private var format: LibraryFormat?
+    @State private var expandedFormats: [LibraryFormat: Bool] = [:]
     @State private var newest = true
     @State private var selecting = false
     @State private var selected = Set<String>()
@@ -71,24 +72,29 @@ struct LibraryView: View {
         .onChange(of: library.brands) { _, values in
             if !values.contains(brand) { brand = "All cameras" }
         }
-        .onChange(of: format) { _, _ in selected = [] }
+        .onChange(of: format) { _, value in
+            selected = []
+            if let value { expandedFormats[value] = true }
+        }
         .onChange(of: brand) { _, _ in selected = [] }
     }
 
     private var gallery: some View {
         let brandItems = brand == "All cameras" ? library.items : library.items.filter { library.brand(for: $0) == brand }
         let groups = Dictionary(grouping: brandItems) { $0.record.format }
-        let categories = LibraryFormat.allCases.filter { (format == nil || format == $0) && groups[$0] != nil }
-        let visible = format.flatMap { groups[$0] } ?? (format == nil ? brandItems : [])
+        let available = groups.keys.sorted()
+        let active = format.flatMap { groups[$0] == nil ? nil : $0 }
+        let categories = active.map { [$0] } ?? available
+        let visible = active.flatMap { groups[$0] } ?? brandItems
         let selectedVisible = selecting ? visible.filter { selected.contains($0.id) } : []
         return ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 if library.access == .limited { Button("Manage selected photos") { manageLimited = true } }
-                if library.hasSnapshot {
+                if available.count > 1 {
                     Picker("Format", selection: $format) {
                         Text("All formats").tag(Optional<LibraryFormat>.none)
-                        ForEach(LibraryFormat.allCases) { value in
-                            Text(LocalizedStringKey(value.titleKey)).tag(Optional(value))
+                        ForEach(available, id: \.self) { value in
+                            Text(LocalizedStringKey(value.title)).tag(Optional(value))
                         }
                     }.pickerStyle(.menu).accessibilityIdentifier("formatPicker")
                 }
@@ -108,39 +114,31 @@ struct LibraryView: View {
                 }
                 if library.cacheSaveFailed { Text("This list could not be saved on this device.").foregroundStyle(.secondary) }
                 if library.indexing { ProgressView("Reading camera brands…") }
-                ForEach(categories) { category in
+                ForEach(categories, id: \.self) { category in
                     let entries = groups[category] ?? []
-                    HStack {
-                        Text(LocalizedStringKey(category.titleKey)).font(.headline)
-                        Text(entries.count.formatted()).font(.subheadline).foregroundStyle(.secondary)
-                    }.accessibilityElement(children: .combine).accessibilityAddTraits(.isHeader)
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 142, maximum: 240), spacing: 12)],
-                              alignment: .leading, spacing: 18) {
-                        ForEach(newest ? entries : Array(entries.reversed())) { item in
-                            if selecting {
-                                Button {
-                                    if !selected.insert(item.id).inserted { selected.remove(item.id) }
-                                } label: {
-                                    tile(item).overlay(alignment: .topTrailing) {
-                                        Image(systemName: selected.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                                            .symbolRenderingMode(.palette).foregroundStyle(.white, .blue)
-                                            .padding(7).shadow(radius: 2)
-                                    }
-                                }.accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
-                            } else {
-                                NavigationLink {
-                                    ResolvedPhotos(ids: [item.id]) { photos in
-                                        if let photo = photos.first {
-                                            ResourceView(item: photo) { library.record($0, for: item) }
-                                        }
-                                    }
-                                } label: { tile(item) }
-                                .accessibilityIdentifier("libraryTile-\(category.id)")
-                            }
+                    Divider()
+                    DisclosureGroup(isExpanded: Binding(
+                        get: { expandedFormats[category] ?? (category == categories.first) },
+                        set: { expandedFormats[category] = $0 }
+                    )) {
+                        photoGrid(newest ? entries : Array(entries.reversed()), category: category)
+                            .padding(.top, 8)
+                    } label: {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(LocalizedStringKey(category.title)).font(.headline)
+                            Spacer()
+                            Text(entries.count.formatted()).monospacedDigit().foregroundStyle(.secondary)
                         }
-                    }.buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("formatSection-" + category.title)
+                    }
+                    .tint(.primary)
                 }
             }.padding()
+        }
+        .onChange(of: available) { _, values in
+            if let format, !values.contains(format) { self.format = nil }
         }
         .refreshable { await library.refresh() }
         .safeAreaInset(edge: .bottom) {
@@ -154,6 +152,34 @@ struct LibraryView: View {
                 }.padding().background(.bar)
             }
         }
+    }
+
+    private func photoGrid(_ entries: [LibraryItem], category: LibraryFormat) -> some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 142, maximum: 240), spacing: 12)],
+                  alignment: .leading, spacing: 18) {
+            ForEach(entries) { item in
+                if selecting {
+                    Button {
+                        if !selected.insert(item.id).inserted { selected.remove(item.id) }
+                    } label: {
+                        tile(item).overlay(alignment: .topTrailing) {
+                            Image(systemName: selected.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                                .symbolRenderingMode(.palette).foregroundStyle(.white, .blue)
+                                .padding(7).shadow(radius: 2)
+                        }
+                    }.accessibilityAddTraits(selected.contains(item.id) ? .isSelected : [])
+                } else {
+                    NavigationLink {
+                        ResolvedPhotos(ids: [item.id]) { photos in
+                            if let photo = photos.first {
+                                ResourceView(item: photo) { library.record($0, for: item) }
+                            }
+                        }
+                    } label: { tile(item) }
+                    .accessibilityIdentifier("libraryTile-" + category.title)
+                }
+            }
+        }.buttonStyle(.plain)
     }
 
     private func tile(_ item: LibraryItem) -> some View {

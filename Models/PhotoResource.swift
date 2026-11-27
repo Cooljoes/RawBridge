@@ -31,12 +31,14 @@ struct PhotoResource: Identifiable {
         format = RAWDetectionService.format(uti: uti, filename: filename)
     }
 
+    var formatName: String? { RAWDetectionService.name(uti: uti, filename: filename, format: format) }
+
     var rawExtension: String? {
-        guard format == .raw else { return nil }
-        return (filename as NSString).pathExtension.nonEmpty?.uppercased()
+        guard format == .raw, let name = formatName, name != "RAW" else { return nil }
+        return name
     }
 
-    var displayFormat: String { rawExtension.map { ".\($0)" } ?? format.rawValue }
+    var displayFormat: String { rawExtension.map { ".\($0)" } ?? formatName ?? "—" }
 
     var original: Bool { source.type == .photo || source.type == .alternatePhoto }
     var role: String {

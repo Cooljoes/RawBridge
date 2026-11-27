@@ -1,61 +1,54 @@
 import Photos
 
-/// Exactly one group per asset. Only original resources participate in the classification.
-enum LibraryFormat: String, Codable, CaseIterable, Identifiable {
-    case jpegRAW = "JPEG + RAW"
-    case raw = "RAW"
-    case heifRAW = "HEIF + RAW"
-    case proRAW = "Apple ProRAW"
-    case jpeg = "JPEG"
-    case heif = "HEIF"
-    case other = "Other formats"
+/// One section per combination of original file formats. Edits and companion videos are excluded.
+struct LibraryFormat: Hashable, Codable, Comparable {
+    let images: [String]
+    let raw: [String]
 
-    var id: Self { self }
-
-    var titleKey: String {
-        self == .heif ? "HEIF only" : rawValue
+    init(images: [String] = [], raw: [String] = []) {
+        self.images = Set(images).sorted()
+        self.raw = Set(raw).sorted()
     }
 
-    init(formats: Set<PhotoFormat>, isProRAW: Bool = false) {
-        switch formats {
-        case [.jpeg, .raw]: self = .jpegRAW
-        case [.heif, .raw]: self = .heifRAW
-        case [.raw]: self = isProRAW ? .proRAW : .raw
-        case [.jpeg]: self = .jpeg
-        case [.heif]: self = .heif
-        default: self = .other
-        }
+    init(originals: [PhotoResource]) {
+        self.init(images: originals.filter { $0.format != .raw }.compactMap(\.formatName),
+                  raw: originals.filter { $0.format == .raw }.compactMap(\.formatName))
+    }
+
+    static let proRAW = Self(raw: ["Apple ProRAW"])
+    var isDNG: Bool { images.isEmpty && raw == ["DNG"] }
+    var isPairedRAW: Bool { !images.isEmpty && !raw.isEmpty }
+    var title: String { (images + raw).joined(separator: " + ").nonEmpty ?? "Format unavailable" }
+
+    private var rank: Int {
+        if isPairedRAW { return 0 }
+        if !raw.isEmpty { return 1 }
+        if images == ["JPEG"] { return 2 }
+        if images == ["HEIC"] || images == ["HEIF"] { return 3 }
+        return images.isEmpty ? 5 : 4
+    }
+
+    static func < (lhs: Self, rhs: Self) -> Bool {
+        (lhs.rank, lhs.title) < (rhs.rank, rhs.title)
     }
 }
 
-/// The disk cache contains only the fields needed to display the last refreshed list.
 struct LibraryRecord: Codable, Identifiable {
     let id: String
-    private let title: String
+    let displayFilename: String
     var format: LibraryFormat
     let rawExtension: String?
 
     init(_ photo: PhotoAsset) {
         id = photo.id
-        title = photo.title
-        format = LibraryFormat(formats: photo.formats)
+        displayFilename = photo.title
+        format = LibraryFormat(originals: photo.originals)
         rawExtension = photo.rawOriginal?.rawExtension
     }
 
-    var displayFilename: String {
-        guard format == .jpegRAW else { return title }
-        let name = title as NSString
-        // A 0.2.0 snapshot may contain the JPEG's name. Show its stem beside the
-        // cached RAW badge until a manual refresh supplies the actual RAW filename.
-        if !name.pathExtension.isEmpty && name.pathExtension.uppercased() != rawExtension {
-            return name.deletingPathExtension
-        }
-        return title
-    }
-
     var formatBadge: String? {
-        guard format == .jpegRAW else { return rawExtension }
-        return rawExtension.map { ".\($0)" } ?? PhotoFormat.raw.rawValue
+        guard format.isPairedRAW, let rawExtension else { return nil }
+        return ".\(rawExtension)"
     }
 }
 
